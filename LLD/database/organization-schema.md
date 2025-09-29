@@ -40,6 +40,7 @@ erDiagram
         string slug UK
         json configuration
         json settings
+        json custom_field_definitions
         boolean is_enabled
         timestamp last_synced
         timestamp created_at
@@ -49,6 +50,9 @@ erDiagram
     device_groups {
         uuid id PK
         string name UK
+        uuid device_type_id FK
+        boolean inherit_custom_fields
+        json custom_field_overrides
         string description
         uuid device_type_id FK
         json settings
@@ -659,6 +663,166 @@ CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_device_id ON audit_logs(device_id);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+```
+
+## Custom Device Fields Extension
+
+### Custom Field Definitions Table
+```sql
+-- Custom field definitions for device types within organization
+CREATE TABLE custom_field_definitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    device_type_id UUID NOT NULL REFERENCES device_types(id) ON DELETE CASCADE,
+    category_name VARCHAR(100) NOT NULL,
+    field_name VARCHAR(100) NOT NULL,
+    field_type VARCHAR(50) NOT NULL CHECK (field_type IN ('integer', 'float', 'string', 'boolean', 'enum', 'json', 'datetime', 'url', 'email')),
+    is_required BOOLEAN DEFAULT FALSE,
+    default_value JSONB,
+    validation_rules JSONB,
+    collection_method VARCHAR(50) NOT NULL CHECK (collection_method IN ('agent', 'snmp', 'manual', 'calculated')),
+    agent_source VARCHAR(255),
+    snmp_oid VARCHAR(255),
+    calculation_formula TEXT,
+    unit VARCHAR(50),
+    description TEXT,
+    display_order INTEGER DEFAULT 1,
+    is_searchable BOOLEAN DEFAULT FALSE,
+    is_filterable BOOLEAN DEFAULT FALSE,
+    show_in_list BOOLEAN DEFAULT FALSE,
+    show_in_dashboard BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(device_type_id, category_name, field_name)
+);
+
+-- Device custom field values
+CREATE TABLE device_custom_fields (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    category_name VARCHAR(100) NOT NULL,
+    field_name VARCHAR(100) NOT NULL,
+    field_value JSONB,
+    data_type VARCHAR(50) NOT NULL,
+    collection_method VARCHAR(50) NOT NULL,
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_collected TIMESTAMP WITH TIME ZONE,
+    collection_status VARCHAR(50) DEFAULT 'pending' CHECK (collection_status IN ('pending', 'collecting', 'success', 'failed', 'manual')),
+    collection_error TEXT,
+    validation_status VARCHAR(50) DEFAULT 'valid' CHECK (validation_status IN ('valid', 'invalid', 'pending')),
+    validation_error TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(device_id, category_name, field_name)
+);
+
+-- Indexes for custom fields
+CREATE INDEX idx_custom_field_definitions_device_type ON custom_field_definitions(device_type_id);
+CREATE INDEX idx_custom_field_definitions_collection_method ON custom_field_definitions(collection_method);
+CREATE INDEX idx_device_custom_fields_device ON device_custom_fields(device_id);
+CREATE INDEX idx_device_custom_fields_category ON device_custom_fields(category_name);
+CREATE INDEX idx_device_custom_fields_collection_status ON device_custom_fields(collection_status);
+CREATE INDEX idx_device_custom_fields_value_gin ON device_custom_fields USING GIN (field_value);
+```
+
+### SNMP Monitoring Extension
+```sql
+-- SNMP configurations for devices and groups
+CREATE TABLE snmp_configurations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    device_id UUID REFERENCES devices(id) ON DELETE CASCADE,
+    device_group_id UUID REFERENCES device_groups(id) ON DELETE CASCADE,
+    configuration_name VARCHAR(255) NOT NULL,
+    host VARCHAR(255) NOT NULL,
+    port INTEGER DEFAULT 161,
+    snmp_version VARCHAR(10) NOT NULL CHECK (snmp_version IN ('v1', 'v2c', 'v3')),
+    community_string VARCHAR(255),
+    security_level VARCHAR(20),
+    auth_protocol VARCHAR(20),
+    auth_password VARCHAR(255),
+    priv_protocol VARCHAR(20),
+    priv_password VARCHAR(255),
+    username VARCHAR(255),
+    polling_interval INTEGER DEFAULT 300,
+    timeout INTEGER DEFAULT 10,
+    retries INTEGER DEFAULT 3,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_poll_at TIMESTAMP WITH TIME ZONE,
+    last_poll_status VARCHAR(20) DEFAULT 'pending',
+    last_poll_error TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CHECK ((device_id IS NOT NULL AND device_group_id IS NULL) OR (device_id IS NULL AND device_group_id IS NOT NULL))
+);
+
+-- SNMP OID definitions
+CREATE TABLE snmp_oids (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    oid_name VARCHAR(255) NOT NULL,
+    oid_value VARCHAR(255) NOT NULL,
+    oid_type VARCHAR(50) NOT NULL CHECK (oid_type IN ('integer', 'string', 'oid', 'gauge', 'counter', 'timeticks')),
+    description TEXT,
+    unit VARCHAR(50),
+    is_custom BOOLEAN DEFAULT FALSE,
+    device_type_id UUID REFERENCES device_types(id) ON DELETE SET NULL,
+    custom_field_mapping VARCHAR(100),
+    transformation_formula TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(oid_name)
+);
+
+-- Alert rules for monitoring
+CREATE TABLE alert_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_name VARCHAR(255) NOT NULL,
+    rule_type VARCHAR(50) NOT NULL CHECK (rule_type IN ('threshold', 'anomaly', 'custom_field', 'snmp_trap', 'agent_offline')),
+    target_type VARCHAR(50) NOT NULL CHECK (target_type IN ('device', 'device_group', 'organization')),
+    target_id UUID,
+    metric_name VARCHAR(255),
+    custom_field_name VARCHAR(100),
+    condition_operator VARCHAR(20) CHECK (condition_operator IN ('>', '<', '>=', '<=', '=', '!=', 'contains', 'not_contains')),
+    threshold_value NUMERIC,
+    severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+    evaluation_interval INTEGER DEFAULT 300,
+    evaluation_window INTEGER DEFAULT 600,
+    consecutive_breaches INTEGER DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE,
+    notification_channels JSONB,
+    rule_conditions JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Alert instances
+CREATE TABLE alert_instances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    alert_rule_id UUID NOT NULL REFERENCES alert_rules(id) ON DELETE CASCADE,
+    device_id UUID REFERENCES devices(id) ON DELETE SET NULL,
+    alert_state VARCHAR(20) NOT NULL CHECK (alert_state IN ('firing', 'resolved', 'acknowledged', 'suppressed')),
+    severity VARCHAR(20) NOT NULL,
+    triggered_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    acknowledged_at TIMESTAMP WITH TIME ZONE,
+    current_value NUMERIC,
+    threshold_value NUMERIC,
+    breach_count INTEGER DEFAULT 1,
+    alert_details JSONB,
+    notification_status JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for SNMP and alerting
+CREATE INDEX idx_snmp_configurations_device ON snmp_configurations(device_id);
+CREATE INDEX idx_snmp_configurations_group ON snmp_configurations(device_group_id);
+CREATE INDEX idx_snmp_oids_device_type ON snmp_oids(device_type_id);
+CREATE INDEX idx_alert_rules_target ON alert_rules(target_type, target_id);
+CREATE INDEX idx_alert_instances_rule ON alert_instances(alert_rule_id);
+CREATE INDEX idx_alert_instances_state ON alert_instances(alert_state);
 ```
 
 ## Database Functions and Triggers

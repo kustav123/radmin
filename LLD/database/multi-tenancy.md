@@ -1,38 +1,261 @@
-# Multi-Tenancy Strategy
+# Multi-Tenancy Strategy with CNPG Operator
 
-This document outlines the multi-tenant architecture strategy for the agent-based remote monitoring system. The system implements a **Database-per-Tenant** approach with shared application instances to ensure complete data isolation while maintaining operational efficiency.
+This document outlines the cloud-native multi-tenant architecture strategy for RMAS using the Cloud Native PostgreSQL (CNPG) operator and a Python Database Service to manage multi-tenant databases on Kubernetes.
 
-## Multi-Tenancy Architecture Overview
+## Cloud-Native Multi-Tenancy Architecture
 
 ```mermaid
 graph TB
-    subgraph "Application Layer (Shared)"
-        LaravelApp[Laravel Application<br/>Manager & Org UIs]
-        AAPI1[Agent API Instance 1]
-        AAPI2[Agent API Instance 2]
+    subgraph "Kubernetes Cluster"
+        subgraph "Application Layer"
+            LaravelApp[Laravel Application<br/>Manager & Org UIs]
+            PythonDBService[Python Database Service<br/>CNPG API Integration]
+            AAPI1[Agent API Instance 1]
+            AAPI2[Agent API Instance 2]
+        end
+        
+        subgraph "CNPG Operator Management"
+            CNPGOperator[CNPG Operator<br/>PostgreSQL Lifecycle]
+            MasterCluster[Master PostgreSQL Cluster<br/>rmas_master]
+        end
+        
+        subgraph "Organization Database Clusters"
+            OrgCluster1[Org 1 PostgreSQL Cluster<br/>rmas_org_acme]
+            OrgCluster2[Org 2 PostgreSQL Cluster<br/>rmas_org_tech]
+            OrgCluster3[Org 3 PostgreSQL Cluster<br/>rmas_org_corp]
+            OrgClusterN[Org N PostgreSQL Cluster<br/>rmas_org_xyz]
+        end
+        
+        subgraph "Backup & Recovery"
+            BackupStorage[S3/MinIO Backup Storage]
+            CNPGBackup[CNPG Backup Management]
+        end
     end
     
-    subgraph "Master Database"
-        MasterDB[(Master Database<br/>Global Data)]
-    end
+    LaravelApp --> PythonDBService
+    PythonDBService --> CNPGOperator
+    CNPGOperator --> MasterCluster
+    CNPGOperator --> OrgCluster1
+    CNPGOperator --> OrgCluster2
+    CNPGOperator --> OrgCluster3
+    CNPGOperator --> OrgClusterN
     
-    subgraph "Organization Databases"
-        OrgDB1[(Organization 1<br/>Database)]
-        OrgDB2[(Organization 2<br/>Database)]
-        OrgDB3[(Organization 3<br/>Database)]
-        OrgDBN[(Organization N<br/>Database)]
-    end
+    AAPI1 --> OrgCluster1
+    AAPI1 --> OrgCluster3
+    AAPI2 --> OrgCluster2
+    AAPI2 --> OrgClusterN
     
-    LaravelApp --> MasterDB
-    LaravelApp --> OrgDB1
-    LaravelApp --> OrgDB2
-    LaravelApp --> OrgDB3
-    LaravelApp --> OrgDBN
+    CNPGBackup --> BackupStorage
+    CNPGOperator --> CNPGBackup
+```
+
+## Python Database Service Architecture
+
+Since there's no official PHP library for CNPG operator management, we implement a Python microservice to handle database operations on behalf of Laravel.
+
+### Python Database Service Implementation
+```python
+from fastapi import FastAPI, HTTPException
+from kubernetes import client, config
+from datetime import datetime
+import yaml
+import logging
+
+class CNPGDatabaseService:
+    def __init__(self):
+        config.load_incluster_config()  # Load Kubernetes config
+        self.custom_api = client.CustomObjectsApi()
+        self.apps_v1 = client.AppsV1Api()
+        self.cnpg_group = "postgresql.cnpg.io"
+        self.cnpg_version = "v1"
+        self.cnpg_plural = "clusters"
+        
+    async def create_organization_database(self, org_slug: str, org_config: dict) -> dict:
+        """Create a new PostgreSQL cluster for an organization"""
+        
+        cluster_name = f"rmas-org-{org_slug}"
+        namespace = "rmas-system"
+        
+        # CNPG Cluster definition
+        cluster_spec = {
+            "apiVersion": f"{self.cnpg_group}/{self.cnpg_version}",
+            "kind": "Cluster",
+            "metadata": {
+                "name": cluster_name,
+                "namespace": namespace,
+                "labels": {
+                    "app": "rmas",
+                    "component": "database",
+                    "organization": org_slug,
+                    "managed-by": "rmas-db-service"
+                }
+            },
+            "spec": {
+                "instances": org_config.get("db_instances", 3),
+                "primaryUpdateStrategy": "unsupervised",
+                "postgresql": {
+                    "parameters": {
+                        "max_connections": "200",
+                        "shared_buffers": "256MB",
+                        "effective_cache_size": "1GB",
+                        "maintenance_work_mem": "64MB",
+                        "checkpoint_completion_target": "0.9",
+                        "wal_buffers": "16MB",
+                        "default_statistics_target": "100",
+                        "random_page_cost": "1.1",
+                        "effective_io_concurrency": "200"
+                    }
+                },
+                "bootstrap": {
+                    "initdb": {
+                        "database": f"rmas_org_{org_slug}",
+                        "owner": f"rmas_org_{org_slug}_user",
+                        "secret": {
+                            "name": f"{cluster_name}-credentials"
+                        }
+                    }
+                },
+                "storage": {
+                    "size": org_config.get("storage_size", "50Gi"),
+                    "storageClass": org_config.get("storage_class", "fast-ssd")
+                },
+                "resources": {
+                    "requests": {
+                        "memory": org_config.get("memory_request", "1Gi"),
+                        "cpu": org_config.get("cpu_request", "500m")
+                    },
+                    "limits": {
+                        "memory": org_config.get("memory_limit", "2Gi"),
+                        "cpu": org_config.get("cpu_limit", "1000m")
+                    }
+                },
+                "monitoring": {
+                    "enabled": True,
+                    "prometheusRule": {
+                        "enabled": True
+                    }
+                },
+                "backup": {
+                    "retentionPolicy": "30d",
+                    "target": "prefer-standby",
+                    "schedule": "0 2 * * *",  # Daily at 2 AM
+                    "s3": {
+                        "bucket": org_config.get("backup_bucket", "rmas-backups"),
+                        "path": f"/organizations/{org_slug}",
+                        "accessKeyId": {
+                            "name": "backup-credentials",
+                            "key": "ACCESS_KEY_ID"
+                        },
+                        "secretAccessKey": {
+                            "name": "backup-credentials", 
+                            "key": "SECRET_ACCESS_KEY"
+                        },
+                        "endpoint": org_config.get("s3_endpoint", "s3.amazonaws.com"),
+                        "region": org_config.get("s3_region", "us-east-1")
+                    }
+                }
+            }
+        }
+        
+        try:
+            # Create the CNPG cluster
+            response = self.custom_api.create_namespaced_custom_object(
+                group=self.cnpg_group,
+                version=self.cnpg_version,
+                namespace=namespace,
+                plural=self.cnpg_plural,
+                body=cluster_spec
+            )
+            
+            # Wait for cluster to be ready
+            await self.wait_for_cluster_ready(cluster_name, namespace)
+            
+            # Get connection details
+            connection_info = await self.get_cluster_connection_info(cluster_name, namespace)
+            
+            return {
+                "status": "success",
+                "cluster_name": cluster_name,
+                "database_name": f"rmas_org_{org_slug}",
+                "connection_info": connection_info,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to create organization database: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Database creation failed: {str(e)}")
     
-    AAPI1 --> OrgDB1
-    AAPI1 --> OrgDB3
-    AAPI2 --> OrgDB2
-    AAPI2 --> OrgDBN
+    async def get_cluster_connection_info(self, cluster_name: str, namespace: str) -> dict:
+        """Get connection information for a CNPG cluster"""
+        
+        try:
+            # Get cluster status
+            cluster = self.custom_api.get_namespaced_custom_object(
+                group=self.cnpg_group,
+                version=self.cnpg_version,
+                namespace=namespace,
+                plural=self.cnpg_plural,
+                name=cluster_name
+            )
+            
+            # Extract connection details from cluster status
+            status = cluster.get("status", {})
+            
+            return {
+                "host": f"{cluster_name}-rw.{namespace}.svc.cluster.local",
+                "port": 5432,
+                "readonly_host": f"{cluster_name}-ro.{namespace}.svc.cluster.local",
+                "database": status.get("currentPrimary", ""),
+                "secret_name": f"{cluster_name}-app",
+                "instances": status.get("instances", 0),
+                "ready_instances": status.get("readyInstances", 0),
+                "phase": status.get("phase", "unknown")
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to get cluster connection info: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Connection info retrieval failed: {str(e)}")
+    
+    async def scale_organization_database(self, org_slug: str, new_instance_count: int) -> dict:
+        """Scale an organization's database cluster"""
+        
+        cluster_name = f"rmas-org-{org_slug}"
+        namespace = "rmas-system"
+        
+        try:
+            # Get current cluster
+            cluster = self.custom_api.get_namespaced_custom_object(
+                group=self.cnpg_group,
+                version=self.cnpg_version,
+                namespace=namespace,
+                plural=self.cnpg_plural,
+                name=cluster_name
+            )
+            
+            # Update instance count
+            cluster["spec"]["instances"] = new_instance_count
+            
+            # Apply the update
+            response = self.custom_api.patch_namespaced_custom_object(
+                group=self.cnpg_group,
+                version=self.cnpg_version,
+                namespace=namespace,
+                plural=self.cnpg_plural,
+                name=cluster_name,
+                body=cluster
+            )
+            
+            return {
+                "status": "success",
+                "cluster_name": cluster_name,
+                "old_instances": cluster["spec"].get("instances", 0),
+                "new_instances": new_instance_count,
+                "scaled_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to scale organization database: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Database scaling failed: {str(e)}")
 ```
 
 ## Multi-Tenancy Models Comparison
@@ -43,9 +266,10 @@ graph TB
 | **Security** | Application-level | Database-level ✓ | Schema-level |
 | **Scalability** | Limited | High ✓ | Medium |
 | **Customization** | Limited | High ✓ | Medium |
-| **Maintenance** | Easy | Complex | Medium |
+| **Maintenance** | Easy | Complex (CNPG Managed) ✓ | Medium |
 | **Cost per Tenant** | Low | Medium | Low |
 | **Backup/Recovery** | Shared | Individual ✓ | Individual |
+| **Kubernetes Native** | No | Yes ✓ | Partial |
 
 ## Implementation Strategy
 

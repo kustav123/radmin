@@ -1,8 +1,47 @@
-# Master Database Schema
+# Master Database Schema with CNPG Integration
 
-The master database contains global system data and organization metadata. This database is shared across the entire system and maintains organization information, global managers, and system-wide configurations.
+The master database contains global system data and organization metadata. This database is managed by the Cloud Native PostgreSQL (CNPG) operator on Kubernetes and integrates with a Python database service for multi-tenant database management.
 
 ## Database: `rmas_master`
+
+### Cloud-Native Architecture
+```mermaid
+graph TB
+    subgraph "Kubernetes Cluster"
+        subgraph "CNPG Operator"
+            CNPGOperator[CNPG Operator<br/>PostgreSQL Management]
+            PrimaryDB[PostgreSQL Primary<br/>rmas_master]
+            ReplicaDB1[PostgreSQL Replica 1]
+            ReplicaDB2[PostgreSQL Replica 2]
+        end
+        
+        subgraph "Application Services"
+            LaravelApp[Laravel Application]
+            PythonDBService[Python Database Service<br/>CNPG API Integration]
+            Backup[Automated Backup<br/>CNPG Managed]
+        end
+    end
+    
+    subgraph "Organization Databases"
+        OrgDB1[Organization DB 1<br/>Tenant Isolated]
+        OrgDB2[Organization DB 2<br/>Tenant Isolated]
+        OrgDBN[Organization DB N<br/>Tenant Isolated]
+    end
+    
+    LaravelApp --> PythonDBService
+    PythonDBService --> CNPGOperator
+    CNPGOperator --> PrimaryDB
+    CNPGOperator --> ReplicaDB1
+    CNPGOperator --> ReplicaDB2
+    CNPGOperator --> Backup
+    
+    PythonDBService -.->|Creates/Manages| OrgDB1
+    PythonDBService -.->|Creates/Manages| OrgDB2
+    PythonDBService -.->|Creates/Manages| OrgDBN
+```
+
+### Python Database Service Integration
+The Python Database Service provides CNPG operator integration for Laravel since there's no official PHP library for CNPG management.
 
 ### Tables Overview
 

@@ -1,44 +1,115 @@
 # System Architecture
 
-## High-Level Architecture
+## Cloud-Native Architecture Overview
+
+RMAS is built as a cloud-native system deployed on Kubernetes with operator-managed data services for high availability and scalability.
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        ManagerUI[Manager UI<br/>Laravel Web]
-        OrgUI[Organization UI<br/>Laravel Web]
-        Agent[Remote Agents<br/>Python/Go]
+    subgraph "Kubernetes Cluster"
+        subgraph "Web Layer"
+            ManagerUI[Manager UI<br/>Laravel]
+            OrgUI[Organization UI<br/>Laravel + SNMP MIB Management]
+        end
+        
+        subgraph "API Layer"
+            AdminAPI[Admin API<br/>Laravel]
+            AgentAPI[Agent API<br/>FastAPI]
+            DBService[Database Service<br/>Python + CNPG API]
+        end
+        
+        subgraph "Infrastructure Services"
+            subgraph "Redis Cluster (6-Node)"
+                RedisM1[Redis Master 1]
+                RedisM2[Redis Master 2] 
+                RedisM3[Redis Master 3]
+                RedisR1[Redis Replica 1]
+                RedisR2[Redis Replica 2]
+                RedisR3[Redis Replica 3]
+            end
+            
+            subgraph "Kafka Cluster (KRaft)"
+                KafkaB1[Kafka Broker 1]
+                KafkaB2[Kafka Broker 2]
+                KafkaB3[Kafka Broker 3]
+                KRaft[KRaft Controller<br/>No ZooKeeper]
+            end
+            
+            subgraph "PostgreSQL (CNPG)"
+                PGPrimary[PostgreSQL Primary]
+                PGReplica1[PostgreSQL Replica 1]
+                PGReplica2[PostgreSQL Replica 2]
+            end
+        end
+        
+        subgraph "Monitoring Services"
+            AdditionalMonitoring[Additional Monitoring Engine<br/>InfluxDB + Prometheus]
+            AlertEngine[Alert System<br/>Multi-channel Notifications]
+            SNMPMonitoring[SNMP Monitoring<br/>Agentless + MIB Support]
+        end
+        
+        subgraph "Kubernetes Operators"
+            StrimziOp[Strimzi Operator<br/>Kafka Management]
+            CNPGOp[CNPG Operator<br/>PostgreSQL Management]
+            RedisOp[Redis Operator<br/>Cluster Management]
+        end
     end
     
-    subgraph "Application Layer"
-        LaravelApp[Laravel Application<br/>Manager & Organization UIs]
-        AgentAPI[Agent API<br/>FastAPI]
-        AuthService[Authentication Service]
+    subgraph "External Devices"
+        Agents[Device Agents<br/>Python/Go]
+        SNMPDevices[SNMP Devices<br/>Network Equipment]
+        ManualDevices[Manual Entry<br/>Custom Fields]
     end
     
-    subgraph "Database Layer"
-        MasterDB[(Master Database<br/>PostgreSQL)]
-        OrgDB1[(Org DB 1<br/>PostgreSQL)]
-        OrgDB2[(Org DB 2<br/>PostgreSQL)]
-        OrgDBN[(Org DB N<br/>PostgreSQL)]
+    subgraph "External Services"
+        EmailSMTP[Email/SMTP]
+        Webhooks[Webhooks/APIs]
+        SNMPTraps[SNMP Trap Receivers]
     end
     
-    ManagerUI --> LaravelApp
-    OrgUI --> LaravelApp
-    Agent --> AgentAPI
+    %% Web Layer Connections
+    ManagerUI --> AdminAPI
+    OrgUI --> AdminAPI
+    OrgUI -.->|MIB Import/Export| SNMPMonitoring
     
-    LaravelApp --> MasterDB
-    LaravelApp --> OrgDB1
-    LaravelApp --> OrgDB2
-    LaravelApp --> OrgDBN
+    %% API Layer Connections
+    AdminAPI --> DBService
+    AgentAPI --> RedisCluster
+    AgentAPI --> KafkaCluster
+    DBService -.->|CNPG API| CNPGOp
     
-    AgentAPI --> OrgDB1
-    AgentAPI --> OrgDB2
-    AgentAPI --> OrgDBN
+    %% Infrastructure Connections
+    RedisM1 -.-> RedisR1
+    RedisM2 -.-> RedisR2
+    RedisM3 -.-> RedisR3
     
-    AuthService --> MasterDB
-    LaravelApp --> AuthService
-    AgentAPI --> AuthService
+    KRaft --> KafkaB1
+    KRaft --> KafkaB2
+    KRaft --> KafkaB3
+    
+    CNPGOp --> PGPrimary
+    CNPGOp --> PGReplica1
+    CNPGOp --> PGReplica2
+    
+    %% Monitoring Connections
+    AdditionalMonitoring --> KafkaCluster
+    AdditionalMonitoring --> RedisCluster
+    AlertEngine --> KafkaCluster
+    AlertEngine --> EmailSMTP
+    AlertEngine --> Webhooks
+    AlertEngine --> SNMPTraps
+    SNMPMonitoring --> KafkaCluster
+    SNMPMonitoring --> RedisCluster
+    
+    %% External Device Connections
+    Agents --> AgentAPI
+    SNMPDevices --> SNMPMonitoring
+    ManualDevices --> OrgUI
+    
+    %% Operator Management
+    StrimziOp -.->|Manages| KafkaCluster
+    CNPGOp -.->|Manages| PostgreSQL
+    RedisOp -.->|Manages| RedisCluster
 ```
 
 ## Component Overview
@@ -50,20 +121,27 @@ graph TB
 - **Features**:
   - Organization management (create, update, delete)
   - Manager user management
-  - Device type templates
+  - Device type templates with custom fields
   - Global configurations
   - System monitoring dashboard
+  - Global alert rule management
+  - SNMP configuration templates
+  - Monitoring infrastructure overview
 
 ### 2. Organization UI (Laravel)
 - **Purpose**: Organization-specific web interface for device management
 - **URL**: `/org/{org_slug}/*`
 - **Users**: Organization administrators and users
 - **Features**:
-  - Device inventory management
+  - Device inventory management with custom fields
   - Device group management
   - Job template creation
   - Agent monitoring
   - Organization-specific reporting
+  - Real-time monitoring dashboards
+  - Alert management and notification settings
+  - SNMP device discovery and monitoring
+  - Custom device type configuration
 
 ### 3. Agent API (FastAPI)
 - **Purpose**: High-performance API for agent communications
@@ -73,6 +151,8 @@ graph TB
   - Heartbeat processing with job instructions
   - Job distribution and result collection
   - System information collection
+  - Monitoring data streaming to Kafka
+  - Custom metrics collection
 
 ### 4. Authentication Service
 - **Purpose**: Centralized authentication and authorization
@@ -80,7 +160,64 @@ graph TB
   - Multi-tenant authentication
   - Token-based agent authentication
   - Role-based access control (RBAC)
-  - Session management
+  - Session management via Redis
+  - JWT token management
+
+### 5. Redis Cache Layer
+- **Purpose**: High-performance caching and session management
+- **Usage**:
+  - Device name lists and active status
+  - User session storage
+  - Configuration caching
+  - Real-time device metrics
+  - Alert rule caching
+  - SNMP device discovery cache
+
+### 6. Kafka Message Broker
+- **Purpose**: Reliable message streaming and event processing
+- **Topics**:
+  - `agent-responses`: Agent heartbeat and system information
+  - `monitoring-data`: Device metrics and custom measurements
+  - `audit-logs`: System audit events
+  - `alert-events`: Alert triggers and notifications
+  - `snmp-data`: SNMP polling results and traps
+
+### 7. Monitoring Engine
+- **Purpose**: Process monitoring data and maintain device health
+- **Technology**: Python/Go microservice
+- **Responsibilities**:
+  - Consume monitoring data from Kafka
+  - Parse custom device metrics
+  - Store time-series data in InfluxDB
+  - Update Prometheus metrics
+  - Trigger alert conditions
+  - Generate monitoring reports
+
+### 8. Alert Engine
+- **Purpose**: Process alerts and send notifications
+- **Technology**: Python microservice
+- **Responsibilities**:
+  - Monitor alert conditions
+  - Send SNMP traps
+  - Execute webhook calls
+  - Send email notifications
+  - Manage notification escalation
+  - Track alert acknowledgments
+
+### 9. SNMP Collector
+- **Purpose**: Agentless monitoring via SNMP
+- **Technology**: Python service with SNMP libraries
+- **Responsibilities**:
+  - Active SNMP polling
+  - SNMP trap receiving
+  - Device discovery via SNMP
+  - MIB parsing and custom OID monitoring
+  - Network device health monitoring
+
+### 10. Time-Series Databases
+- **InfluxDB**: Primary time-series database for monitoring data
+- **Prometheus**: Metrics collection and alerting
+- **Grafana**: Visualization and dashboard platform
 
 ## Data Flow Architecture
 
@@ -151,27 +288,42 @@ sequenceDiagram
 - **Database Sharding**: Each organization has its own database
 - **API Load Balancing**: Multiple instances of both Laravel and FastAPI
 - **Stateless Design**: All services are stateless for easy scaling
+- **Message Broker Partitioning**: Kafka topic partitioning for parallel processing
+- **Microservice Architecture**: Independent scaling of monitoring and alert engines
 
 ### Performance Optimization
-- **Caching**: Redis for session and frequently accessed data
+- **Redis Caching**: Session storage, device lists, and configuration caching
 - **Database Indexing**: Optimized indexes for query performance
 - **Async Processing**: FastAPI for handling high-volume agent requests
 - **Connection Pooling**: Database connection optimization
+- **Message Streaming**: Kafka for decoupled, high-throughput data processing
+- **Time-Series Optimization**: InfluxDB for efficient monitoring data storage
+
+### Monitoring Data Pipeline
+- **Real-time Processing**: Kafka Streams for live monitoring data
+- **Batch Processing**: Scheduled aggregation of historical data
+- **Data Retention**: Configurable retention policies for time-series data
+- **Compression**: Efficient storage compression for large monitoring datasets
 
 ## Security Architecture
 
 ### Authentication Layers
-1. **Manager Authentication**: Laravel Sanctum with session-based auth
-2. **Organization Authentication**: Multi-tenant session management
-3. **Agent Authentication**: Token-based authentication with device binding
+1. **Manager Authentication**: Laravel Sanctum with Redis session storage
+2. **Organization Authentication**: Multi-tenant session management via Redis
+3. **Agent Authentication**: JWT tokens with device binding and Redis validation
+4. **SNMP Authentication**: Community strings and SNMPv3 authentication
 
 ### Data Isolation
 - **Database Level**: Separate databases per organization
 - **Application Level**: Organization context validation
 - **API Level**: Route-based organization filtering
+- **Cache Level**: Redis namespace isolation per organization
+- **Message Level**: Kafka topic access control per organization
 
 ### Security Measures
 - **Token Rotation**: Regular device token rotation
-- **Audit Logging**: Comprehensive audit trail
+- **Audit Logging**: Comprehensive audit trail via Kafka
 - **Rate Limiting**: API rate limiting per organization
-- **Encryption**: TLS for all communications
+- **Encryption**: TLS for all communications and encrypted message payloads
+- **SNMP Security**: SNMPv3 encryption and authentication support
+- **Monitoring Security**: Encrypted monitoring data transmission

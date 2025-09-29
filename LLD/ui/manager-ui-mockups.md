@@ -1,6 +1,6 @@
-# Manager UI Mockups
+# Manager UI Overview
 
-This document provides detailed mockups and design specifications for the Manager UI interface, which is used by system administrators to manage organizations and global settings.
+This document provides an overview and design specifications for the Manager UI interface, which is used by system administrators to manage organizations and global settings.
 
 ## Manager UI Overview
 
@@ -12,6 +12,13 @@ The Manager UI is a comprehensive web application built with Laravel and Vue.js 
 - **Intuitive Navigation**: Clear hierarchical navigation
 - **Real-time Updates**: Live data updates and notifications
 - **Dark/Light Theme**: Support for both themes
+
+### Module Documentation
+For detailed UI mockups and field specifications, see the individual module documentation:
+
+- **[Device Types Management](modules/manager-device-types.md)** - Global device type templates and custom field definitions
+- **[Organizations Management](modules/manager-organizations.md)** - Tenant organization creation and management
+- **[Users Management](modules/manager-users.md)** - System administrator and user management across all tenants
 
 ## Login Page
 
@@ -194,23 +201,156 @@ The Manager UI is a comprehensive web application built with Laravel and Vue.js 
 ║ │ 🖥️  Windows Desktop                                                       │ ║
 ║ │    windows-desktop  Windows     25     1,240   2024-01-10   [👁️] [✏️] [🔄] │ ║
 ║ │    Agent monitoring, file operations, registry access                   │ ║
+║ │    Custom Fields: 12 fields defined                                     │ ║
 ║ │                                                                          │ ║
 ║ │ 🐧 Linux Server                                                          │ ║
 ║ │    linux-server     Linux       23       890   2024-01-08   [👁️] [✏️] [🔄] │ ║
 ║ │    System monitoring, service management, log collection                 │ ║
+║ │    Custom Fields: 8 fields defined                                      │ ║
 ║ │                                                                          │ ║
 ║ │ 🍎 macOS Workstation                                                     │ ║
 ║ │    macos-workstation macOS       12       320   2024-01-05   [👁️] [✏️] [🔄] │ ║
 ║ │    Application monitoring, brew package management                       │ ║
+║ │    Custom Fields: 10 fields defined                                     │ ║
 ║ │                                                                          │ ║
 ║ │ 📡 Network Device                                                        │ ║
 ║ │    network-device   SNMP          8        45   2024-01-12   [👁️] [✏️] [🔄] │ ║
 ║ │    SNMP monitoring, network statistics, port status                      │ ║
+║ │    Custom Fields: 6 fields defined                                      │ ║
 ║ │                                                                          │ ║
 ║ └──────────────────────────────────────────────────────────────────────────┘ ║
 ║                                                                              ║
 ║ Legend: [👁️] View Details  [✏️] Edit  [🔄] Sync to All Organizations         ║
 ║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+## Create/Edit Device Type Modal
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    ║
+║         ░░░ ┌─────────────────────────────────────────────────────────┐ ░░░  ║
+║         ░░░ │              Create Device Type: Windows Desktop        │ ░░░  ║
+║         ░░░ ├─────────────────────────────────────────────────────────┤ ░░░  ║
+║         ░░░ │                                                         │ ░░░  ║
+║         ░░░ │ 📋 Basic Information                                    │ ░░░  ║
+║         ░░░ │ ┌─────────────────────────────────────────────────────┐ │ ░░░  ║
+║         ░░░ │ │ Type Name:      [Windows Desktop        ] *Required │ │ ░░░  ║
+║         ░░░ │ │ Slug:           [windows-desktop        ] (auto)    │ │ ░░░  ║
+║         ░░░ │ │ Platform:       [Windows ▼              ]           │ │ ░░░  ║
+║         ░░░ │ │ Connection Type: ◉ Agent  ○ SNMP  ○ Both            │ │ ░░░  ║
+║         ░░░ │ │ Icon:           [🖥️ ▼                   ]           │ │ ░░░  ║
+║         ░░░ │ │ Description:    [Windows desktop computers...]      │ │ ░░░  ║
+║         ░░░ │ └─────────────────────────────────────────────────────┘ │ ░░░  ║
+║         ░░░ │                                                         │ ░░░  ║
+║         ░░░ │ 🔧 Agent Configuration (when Agent selected)            │ ░░░  ║
+║         ░░░ │ ┌─────────────────────────────────────────────────────┐ │ ░░░  ║
+║         ░░░ │ │ ☑️ Enable System Information Collection             │ │ ░░░  ║
+║         ░░░ │ │ ☑️ Enable Performance Monitoring                    │ │ ░░░  ║
+║         ░░░ │ │ ☑️ Enable File System Monitoring                    │ │ ░░░  ║
+║         ░░░ │ │ ☑️ Enable Process Monitoring                        │ │ ░░░  ║
+║         ░░░ │ │ ☑️ Enable Registry Access (Windows only)            │ │ ░░░  ║
+║         ░░░ │ │ ☑️ Enable Software Inventory                        │ │ ░░░  ║
+║         ░░░ │ │ Collection Interval: [5        ] minutes            │ │ ░░░  ║
+║         ░░░ │ └─────────────────────────────────────────────────────┘ │ ░░░  ║
+║         ░░░ │                                                         │ ░░░  ║
+║         ░░░ │ 📡 SNMP Configuration (when SNMP selected)             │ ░░░  ║
+║         ░░░ │ ┌─────────────────────────────────────────────────────┐ │ ░░░  ║
+║         ░░░ │ │ SNMP Version:   [v2c ▼                 ]            │ │ ░░░  ║
+║         ░░░ │ │ Default Community: [public              ]            │ │ ░░░  ║
+║         ░░░ │ │ Default Port:   [161                   ]            │ │ ░░░  ║
+║         ░░░ │ │ Poll Interval:  [30        ] seconds                │ │ ░░░  ║
+║         ░░░ │ │ Timeout:        [5         ] seconds                │ │ ░░░  ║
+║         ░░░ │ │ Retries:        [3         ] attempts               │ │ ░░░  ║
+║         ░░░ │ └─────────────────────────────────────────────────────┘ │ ░░░  ║
+║         ░░░ │                                                         │ ░░░  ║
+║         ░░░ │ 🏷️ Custom Fields Definition                            │ ░░░  ║
+║         ░░░ │ ┌─────────────────────────────────────────────────────┐ │ ░░░  ║
+║         ░░░ │ │ Defined Custom Fields (12)              [+ Add Field]│ │ ░░░  ║
+║         ░░░ │ │                                                     │ │ ░░░  ║
+║         ░░░ │ │ 🔧 Hardware Specifications                          │ │ ░░░  ║
+║         ░░░ │ │ ├─ CPU Cores (Integer) - Agent Collection           │ │ ░░░  ║
+║         ░░░ │ │ ├─ RAM (GB) (Integer) - Agent Collection            │ │ ░░░  ║
+║         ░░░ │ │ ├─ Storage Type (Select) - Agent Collection         │ │ ░░░  ║
+║         ░░░ │ │ └─ Graphics Card (Text) - Manual Entry              │ │ ░░░  ║
+║         ░░░ │ │                                                     │ │ ░░░  ║
+║         ░░░ │ │ 🏢 Business Information                             │ │ ░░░  ║
+║         ░░░ │ │ ├─ Department (Select) - Manual Entry *Required     │ │ ░░░  ║
+║         ░░░ │ │ ├─ Cost Center (Text) - Manual Entry                │ │ ░░░  ║
+║         ░░░ │ │ ├─ Asset Tag (Text) - Manual Entry *Required        │ │ ░░░  ║
+║         ░░░ │ │ └─ Purchase Date (Date) - Manual Entry              │ │ ░░░  ║
+║         ░░░ │ │                                                     │ │ ░░░  ║
+║         ░░░ │ │ 📍 Location Information                             │ │ ░░░  ║
+║         ░░░ │ │ ├─ Building (Select) - Manual Entry *Required       │ │ ░░░  ║
+║         ░░░ │ │ ├─ Floor (Text) - Manual Entry                      │ │ ░░░  ║
+║         ░░░ │ │ └─ Room (Text) - Manual Entry                       │ │ ░░░  ║
+║         ░░░ │ │                                                     │ │ ░░░  ║
+║         ░░░ │ │ 📊 Performance Metrics                              │ │ ░░░  ║
+║         ░░░ │ │ └─ Performance Index (Calculated) - Auto Generated  │ │ ░░░  ║
+║         ░░░ │ └─────────────────────────────────────────────────────┘ │ ░░░  ║
+║         ░░░ │                                                         │ ░░░  ║
+║         ░░░ │              [❌ Cancel] [💾 Save Device Type]          │ ░░░  ║
+║         ░░░ └─────────────────────────────────────────────────────────┘ ░░░  ║
+║                                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+## Add Custom Field Modal
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                               ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                   ║
+║      ░░░ ┌─────────────────────────────────────────────────────────────┐ ░░░ ║
+║      ░░░ │                Add Custom Field to Device Type             │ ░░░ ║
+║      ░░░ ├─────────────────────────────────────────────────────────────┤ ░░░ ║
+║      ░░░ │                                                             │ ░░░ ║
+║      ░░░ │ 📋 Field Information                                        │ ░░░ ║
+║      ░░░ │ ┌─────────────────────────────────────────────────────────┐ │ ░░░ ║
+║      ░░░ │ │ Field Category: [Hardware Specifications ▼] [+ New]    │ │ ░░░ ║
+║      ░░░ │ │ Field Name:     [CPU Cores              ] *Required     │ │ ░░░ ║
+║      ░░░ │ │ Display Name:   [Number of CPU Cores    ]               │ │ ░░░ ║
+║      ░░░ │ │ Field Type:     [Integer ▼              ]               │ │ ░░░ ║
+║      ░░░ │ │ Unit:           [cores                  ]               │ │ ░░░ ║
+║      ░░░ │ │ Description:    [Total CPU cores in system...]         │ │ ░░░ ║
+║      ░░░ │ │ Required:       ☐ This field is required               │ │ ░░░ ║
+║      ░░░ │ └─────────────────────────────────────────────────────────┘ │ ░░░ ║
+║      ░░░ │                                                             │ ░░░ ║
+║      ░░░ │ 🔄 Data Collection Method                                   │ ░░░ ║
+║      ░░░ │ ┌─────────────────────────────────────────────────────────┐ │ ░░░ ║
+║      ░░░ │ │ Collection: ◉ Agent  ○ SNMP  ○ Manual  ○ Calculated    │ │ ░░░ ║
+║      ░░░ │ │                                                         │ │ ░░░ ║
+║      ░░░ │ │ Agent Configuration:                                    │ │ ░░░ ║
+║      ░░░ │ │ Source Path:   [system_info.hardware.cpu.cores]        │ │ ░░░ ║
+║      ░░░ │ │ Collection Frequency: [Every 24 hours ▼]               │ │ ░░░ ║
+║      ░░░ │ │                                                         │ │ ░░░ ║
+║      ░░░ │ │ SNMP Configuration: (disabled when Agent selected)     │ │ ░░░ ║
+║      ░░░ │ │ OID:           [1.3.6.1.4.1.2021.11.9.0]               │ │ ░░░ ║
+║      ░░░ │ │ Transform:     [value / 100            ]                │ │ ░░░ ║
+║      ░░░ │ └─────────────────────────────────────────────────────────┘ │ ░░░ ║
+║      ░░░ │                                                             │ ░░░ ║
+║      ░░░ │ ✅ Validation Rules                                         │ ░░░ ║
+║      ░░░ │ ┌─────────────────────────────────────────────────────────┐ │ ░░░ ║
+║      ░░░ │ │ Minimum Value: [1              ] (for numeric types)    │ │ ░░░ ║
+║      ░░░ │ │ Maximum Value: [128            ]                        │ │ ░░░ ║
+║      ░░░ │ │ Default Value: [4              ]                        │ │ ░░░ ║
+║      ░░░ │ │ Pattern:       [               ] (for string types)     │ │ ░░░ ║
+║      ░░░ │ │ Allowed Values:[               ] (for select types)     │ │ ░░░ ║
+║      ░░░ │ └─────────────────────────────────────────────────────────┘ │ ░░░ ║
+║      ░░░ │                                                             │ ░░░ ║
+║      ░░░ │ 👁️ Display Options                                          │ ░░░ ║
+║      ░░░ │ ┌─────────────────────────────────────────────────────────┐ │ ░░░ ║
+║      ░░░ │ │ Display Order: [1              ]                        │ │ ░░░ ║
+║      ░░░ │ │ ☑️ Show in Device List                                  │ │ ░░░ ║
+║      ░░░ │ │ ☑️ Show in Dashboard                                    │ │ ░░░ ║
+║      ░░░ │ │ ☑️ Searchable Field                                     │ │ ░░░ ║
+║      ░░░ │ │ ☑️ Filterable Field                                     │ │ ░░░ ║
+║      ░░░ │ │ ☐ Administrative Only                                   │ │ ░░░ ║
+║      ░░░ │ └─────────────────────────────────────────────────────────┘ │ ░░░ ║
+║      ░░░ │                                                             │ ░░░ ║
+║      ░░░ │         [❌ Cancel] [🧪 Test] [💾 Add Field]               │ ░░░ ║
+║      ░░░ └─────────────────────────────────────────────────────────────┘ ░░░ ║
+║                               ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
