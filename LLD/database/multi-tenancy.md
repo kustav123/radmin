@@ -1,6 +1,6 @@
 # Multi-Tenancy Strategy with Generic Kubernetes Service Manager
 
-This document outlines the cloud-native multi-tenant architecture strategy for RMAS using a Python Infrastructure Service that acts as a generic API wrapper around Kubernetes operators (CNPG for PostgreSQL and Strimzi for Kafka) to create, manage, and maintain organization infrastructure on Kubernetes.
+This document outlines the cloud-native multi-tenant architecture strategy for RMAS using a Python Infrastructure Service that acts as a generic API wrapper around Kubernetes operators (CNPG for PostgreSQL, Strimzi for Kafka, and Redis Operator) to create, manage, and maintain organization infrastructure on Kubernetes. Note: Kafka and Redis are shared services across all organizations with logical separation through org IDs, while PostgreSQL databases are isolated per organization.
 
 ## Cloud-Native Multi-Tenancy Architecture
 
@@ -9,7 +9,7 @@ graph TB
     subgraph "Kubernetes Cluster"
         subgraph "Application Layer"
             LaravelApp[Laravel Application<br/>Manager & Org UIs]
-            PythonInfraService[Python Infrastructure Service<br/>CNPG & Strimzi API Integration]
+            PythonInfraService[Python Infrastructure Service<br/>CNPG, Strimzi & Redis API Integration]
             AAPI1[Agent API Instance 1]
             AAPI2[Agent API Instance 2]
         end
@@ -21,14 +21,15 @@ graph TB
             MasterCluster[Master PostgreSQL Cluster<br/>rmas_master]
         end
         
-        subgraph "Organization Infrastructure Clusters"
+        subgraph "Shared Infrastructure (All Orgs)"
+            KafkaCluster[Shared Kafka Cluster<br/>Multi-tenant with org_id routing]
+            RedisCluster[Shared Redis Cluster<br/>6-pod: 3 masters + 3 slaves<br/>Org isolation via key prefixes]
+        end
+        
+        subgraph "Organization Database Clusters (Isolated)"
             OrgCluster1[Org 1 PostgreSQL Cluster<br/>rmas_org_acme]
-            OrgKafka1[Org 1 Kafka Cluster<br/>kafka_org_acme]
-            OrgRedis1[Org 1 Redis Cluster<br/>redis_org_acme]
-            
             OrgCluster2[Org 2 PostgreSQL Cluster<br/>rmas_org_tech]
-            OrgKafka2[Org 2 Kafka Cluster<br/>kafka_org_tech]
-            OrgRedis2[Org 2 Redis Cluster<br/>redis_org_tech]
+            OrgClusterN[Org N PostgreSQL Cluster<br/>rmas_org_xyz]
         end
         
         subgraph "Backup & Recovery"
@@ -46,20 +47,21 @@ graph TB
     CNPGOperator --> MasterCluster
     CNPGOperator --> OrgCluster1
     CNPGOperator --> OrgCluster2
+    CNPGOperator --> OrgClusterN
     
-    StrimziOperator --> OrgKafka1
-    StrimziOperator --> OrgKafka2
+    StrimziOperator --> KafkaCluster
+    RedisOperator --> RedisCluster
     
-    RedisOperator --> OrgRedis1
-    RedisOperator --> OrgRedis2
+    AAPI1 -->|org_id: acme| OrgCluster1
+    AAPI1 -->|org_id: acme| KafkaCluster
+    AAPI1 -->|org_id: acme keys| RedisCluster
     
-    AAPI1 --> OrgCluster1
-    AAPI1 --> OrgKafka1
-    AAPI1 --> OrgRedis1
+    AAPI2 -->|org_id: tech| OrgCluster2
+    AAPI2 -->|org_id: tech| KafkaCluster
+    AAPI2 -->|org_id: tech keys| RedisCluster
     
-    AAPI2 --> OrgCluster2
-    AAPI2 --> OrgKafka2
-    AAPI2 --> OrgRedis2
+    LaravelApp -->|All orgs| KafkaCluster
+    LaravelApp -->|Session storage| RedisCluster
     
     CNPGBackup --> BackupStorage
     KafkaBackup --> BackupStorage
@@ -69,7 +71,13 @@ graph TB
 
 ## Python Infrastructure Service as Generic Kubernetes Operator Wrapper
 
-The Python Infrastructure Service acts as a comprehensive API wrapper around multiple Kubernetes operators (CNPG, Strimzi, Redis Operator), providing high-level infrastructure management operations through RESTful endpoints. This service handles the complete lifecycle of organization infrastructure including PostgreSQL databases, Kafka clusters, Redis clusters, creation, initialization, scaling, backup, and maintenance.
+The Python Infrastructure Service acts as a comprehensive API wrapper around multiple Kubernetes operators (CNPG, Strimzi, Redis Operator), providing high-level infrastructure management operations through RESTful endpoints. This service handles:
+
+- **PostgreSQL databases**: Isolated per organization with dedicated clusters
+- **Kafka messaging**: Shared cluster with topic-based organization isolation using org_id routing
+- **Redis caching**: Shared 6-pod cluster with key-based organization isolation using org_id prefixes
+
+This hybrid approach optimizes resource utilization while maintaining proper data isolation and security.
 
 ### Infrastructure Service API Architecture
 
@@ -89,10 +97,10 @@ graph TB
         BackupManager[Backup & Recovery<br/>Automated Management]
     end
     
-    subgraph "Organization Infrastructure Clusters"
-        OrgPostgres[Org PostgreSQL Clusters<br/>rmas_org_*]
-        OrgKafka[Org Kafka Clusters<br/>kafka_org_*]
-        OrgRedis[Org Redis Clusters<br/>redis_org_*]
+    subgraph "Infrastructure Services"
+        OrgPostgres[Organization PostgreSQL Clusters<br/>rmas_org_* (Isolated)]
+        SharedKafka[Shared Kafka Cluster<br/>org_id based topics/routing]
+        SharedRedis[Shared Redis Cluster<br/>org_id key prefixes]
     end
     
     LaravelApp -->|HTTP API Calls| FastAPI
@@ -103,12 +111,12 @@ graph TB
     FastAPI -->|Manage Backups| BackupManager
     
     CNPGOperator -->|Creates/Manages| OrgPostgres
-    StrimziOperator -->|Creates/Manages| OrgKafka
-    RedisOperator -->|Creates/Manages| OrgRedis
+    StrimziOperator -->|Creates/Manages| SharedKafka
+    RedisOperator -->|Creates/Manages| SharedRedis
     
     InitScripts -->|Initialize Schema| OrgPostgres
-    BackupManager -->|Backup All| OrgPostgres
-    BackupManager -->|Backup Topics| OrgKafka
+    BackupManager -->|Backup Per Org| OrgPostgres
+    BackupManager -->|Backup Topics| SharedKafka
 ```
 
 ### Infrastructure Service API Endpoints
@@ -154,74 +162,109 @@ POST /api/v1/organizations/{org_slug}/database/backup
 DELETE /api/v1/organizations/{org_slug}/database
 ```
 
-#### Organization Kafka Management
+#### Shared Kafka Management
 ```bash
-# Create organization Kafka cluster
-POST /api/v1/organizations/{org_slug}/kafka
+# Get shared Kafka cluster status
+GET /api/v1/infrastructure/kafka/status
+
+# Create standard topics for new organization
+POST /api/v1/infrastructure/kafka/organization-topics
 Content-Type: application/json
 {
-    "kafka_version": "3.6.0",
-    "brokers": 3,
-    "storage_size": "100Gi",
-    "memory_limit": "4Gi",
-    "cpu_limit": "2000m",
-    "enable_kraft": true,
-    "create_default_topics": true
+    "org_id": "acme",
+    "topics": [
+        {
+            "name": "device-events",
+            "partitions": 6,
+            "replication_factor": 3,
+            "retention_ms": 604800000
+        },
+        {
+            "name": "alert-notifications", 
+            "partitions": 3,
+            "replication_factor": 3,
+            "retention_ms": 2592000000
+        },
+        {
+            "name": "job-execution-results",
+            "partitions": 3,
+            "replication_factor": 3,
+            "retention_ms": 1209600000
+        },
+        {
+            "name": "audit-logs",
+            "partitions": 3,
+            "replication_factor": 3,
+            "retention_ms": 7776000000
+        }
+    ]
 }
+# Creates: acme-device-events, acme-alert-notifications, etc.
 
-# Get Kafka cluster status
-GET /api/v1/organizations/{org_slug}/kafka/status
-
-# Scale Kafka brokers
-PUT /api/v1/organizations/{org_slug}/kafka/scale
+# Create additional topic for organization
+POST /api/v1/infrastructure/kafka/topics
+Content-Type: application/json
 {
-    "brokers": 5
-}
-
-# Create Kafka topic
-POST /api/v1/organizations/{org_slug}/kafka/topics
-{
-    "topic_name": "device-events",
+    "org_id": "acme",
+    "topic_name": "custom-metrics",
     "partitions": 6,
     "replication_factor": 3,
     "cleanup_policy": "delete",
     "retention_ms": 604800000
 }
+# Creates: acme-custom-metrics
 
-# Delete Kafka cluster
-DELETE /api/v1/organizations/{org_slug}/kafka
-```
+# List topics for organization
+GET /api/v1/infrastructure/kafka/topics?org_id=acme
 
-#### Organization Redis Management
-```bash
-# Create organization Redis cluster (6 pods: 3 masters + 3 slaves)
-POST /api/v1/organizations/{org_slug}/redis
-Content-Type: application/json
+# Get topic details for organization
+GET /api/v1/infrastructure/kafka/topics/{org_id}-{topic_name}
+
+# Scale Kafka brokers (affects all organizations)
+PUT /api/v1/infrastructure/kafka/scale
 {
-    "redis_version": "7.2",
-    "masters": 3,
-    "slaves_per_master": 1,
-    "memory_limit": "2Gi",
-    "cpu_limit": "1000m",
-    "storage_size": "20Gi",
-    "enable_persistence": true
+    "brokers": 5
 }
 
-# Get Redis cluster status
-GET /api/v1/organizations/{org_slug}/redis/status
+# Get Kafka consumer group info for organization
+GET /api/v1/infrastructure/kafka/consumer-groups?org_id=acme
 
-# Scale Redis cluster
-PUT /api/v1/organizations/{org_slug}/redis/scale
+# Delete organization topics (when org is deleted)
+DELETE /api/v1/infrastructure/kafka/organization-topics?org_id=acme
+```
+
+#### Shared Redis Management
+```bash
+# Get shared Redis cluster status
+GET /api/v1/infrastructure/redis/status
+
+# Get Redis cluster topology
+GET /api/v1/infrastructure/redis/topology
+
+# Scale Redis cluster (affects all organizations)
+PUT /api/v1/infrastructure/redis/scale
 {
     "masters": 3,
     "slaves_per_master": 2
 }
 
-# Get Redis cluster topology
-GET /api/v1/organizations/{org_slug}/redis/topology
+# Get Redis key statistics for organization
+GET /api/v1/infrastructure/redis/stats?org_id=acme
 
-# Delete Redis cluster
-DELETE /api/v1/organizations/{org_slug}/redis
+# Flush organization-specific keys (emergency operation)
+DELETE /api/v1/infrastructure/redis/keys?org_id=acme
+```
+
+#### Infrastructure Monitoring
+```bash
+# Get overall infrastructure health
+GET /api/v1/infrastructure/health
+
+# Get resource utilization across all services
+GET /api/v1/infrastructure/metrics
+
+# Get organization-specific usage statistics
+GET /api/v1/organizations/{org_slug}/infrastructure/usage
 ```
 
 ### Python Infrastructure Service Implementation
@@ -567,6 +610,212 @@ class KubernetesInfrastructureService:
         except Exception as e:
             logging.error(f"Failed to scale organization database: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Database scaling failed: {str(e)}")
+    
+    async def create_organization_topics(self, org_id: str, topics_config: list) -> dict:
+        """Create standard topics for an organization"""
+        
+        namespace = "rmas-system"
+        created_topics = []
+        failed_topics = []
+        
+        for topic_config in topics_config:
+            topic_name = f"{org_id}-{topic_config['name']}"
+            
+            topic_spec = {
+                "apiVersion": f"{self.strimzi_group}/{self.strimzi_version}",
+                "kind": "KafkaTopic",
+                "metadata": {
+                    "name": topic_name,
+                    "namespace": namespace,
+                    "labels": {
+                        "strimzi.io/cluster": "rmas-kafka-shared",
+                        "organization": org_id,
+                        "topic-type": topic_config['name'],
+                        "managed-by": "rmas-infra-service"
+                    }
+                },
+                "spec": {
+                    "topicName": topic_name,
+                    "partitions": topic_config.get("partitions", 6),
+                    "replicas": topic_config.get("replication_factor", 3),
+                    "config": {
+                        "cleanup.policy": topic_config.get("cleanup_policy", "delete"),
+                        "retention.ms": str(topic_config.get("retention_ms", 604800000)),
+                        "min.insync.replicas": "2",
+                        "compression.type": "lz4"
+                    }
+                }
+            }
+            
+            try:
+                response = self.custom_api.create_namespaced_custom_object(
+                    group=self.strimzi_group,
+                    version=self.strimzi_version,
+                    namespace=namespace,
+                    plural=self.topic_plural,
+                    body=topic_spec
+                )
+                
+                created_topics.append({
+                    "name": topic_name,
+                    "partitions": topic_config.get("partitions", 6),
+                    "replication_factor": topic_config.get("replication_factor", 3),
+                    "status": "created"
+                })
+                
+            except Exception as e:
+                logging.error(f"Failed to create topic {topic_name}: {str(e)}")
+                failed_topics.append({
+                    "name": topic_name,
+                    "error": str(e)
+                })
+        
+        return {
+            "status": "completed",
+            "organization": org_id,
+            "created_topics": created_topics,
+            "failed_topics": failed_topics,
+            "total_requested": len(topics_config),
+            "total_created": len(created_topics),
+            "created_at": datetime.utcnow().isoformat()
+        }
+    
+    async def create_organization_topic(self, org_id: str, topic_config: dict) -> dict:
+        """Create a single organization-specific topic"""
+        
+        topic_name = f"{org_id}-{topic_config['topic_name']}"
+        namespace = "rmas-system"
+        
+        topic_spec = {
+            "apiVersion": f"{self.strimzi_group}/{self.strimzi_version}",
+            "kind": "KafkaTopic",
+            "metadata": {
+                "name": topic_name,
+                "namespace": namespace,
+                "labels": {
+                    "strimzi.io/cluster": "rmas-kafka-shared",
+                    "organization": org_id,
+                    "topic-type": topic_config['topic_name'],
+                    "managed-by": "rmas-infra-service"
+                }
+            },
+            "spec": {
+                "topicName": topic_name,
+                "partitions": topic_config.get("partitions", 6),
+                "replicas": topic_config.get("replication_factor", 3),
+                "config": {
+                    "cleanup.policy": topic_config.get("cleanup_policy", "delete"),
+                    "retention.ms": str(topic_config.get("retention_ms", 604800000)),
+                    "min.insync.replicas": "2",
+                    "compression.type": "lz4"
+                }
+            }
+        }
+        
+        try:
+            response = self.custom_api.create_namespaced_custom_object(
+                group=self.strimzi_group,
+                version=self.strimzi_version,
+                namespace=namespace,
+                plural=self.topic_plural,
+                body=topic_spec
+            )
+            
+            return {
+                "status": "success",
+                "topic_name": topic_name,
+                "organization": org_id,
+                "partitions": topic_config.get("partitions", 6),
+                "replication_factor": topic_config.get("replication_factor", 3),
+                "created_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to create organization topic: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Topic creation failed: {str(e)}")
+    
+    async def list_organization_topics(self, org_id: str) -> dict:
+        """List all topics for an organization"""
+        
+        namespace = "rmas-system"
+        
+        try:
+            topics = self.custom_api.list_namespaced_custom_object(
+                group=self.strimzi_group,
+                version=self.strimzi_version,
+                namespace=namespace,
+                plural=self.topic_plural,
+                label_selector=f"organization={org_id}"
+            )
+            
+            org_topics = []
+            for topic in topics.get("items", []):
+                topic_name = topic["spec"]["topicName"]
+                org_topics.append({
+                    "name": topic_name,
+                    "partitions": topic["spec"]["partitions"],
+                    "replicas": topic["spec"]["replicas"],
+                    "config": topic["spec"].get("config", {}),
+                    "status": topic.get("status", {}).get("conditions", [])
+                })
+            
+            return {
+                "organization": org_id,
+                "topics": org_topics,
+                "total_topics": len(org_topics)
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to list organization topics: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Topic listing failed: {str(e)}")
+    
+    async def delete_organization_topics(self, org_id: str) -> dict:
+        """Delete all topics for an organization"""
+        
+        namespace = "rmas-system"
+        
+        try:
+            # First list all topics for the organization
+            topics = self.custom_api.list_namespaced_custom_object(
+                group=self.strimzi_group,
+                version=self.strimzi_version,
+                namespace=namespace,
+                plural=self.topic_plural,
+                label_selector=f"organization={org_id}"
+            )
+            
+            deleted_topics = []
+            failed_deletions = []
+            
+            for topic in topics.get("items", []):
+                topic_name = topic["metadata"]["name"]
+                try:
+                    self.custom_api.delete_namespaced_custom_object(
+                        group=self.strimzi_group,
+                        version=self.strimzi_version,
+                        namespace=namespace,
+                        plural=self.topic_plural,
+                        name=topic_name
+                    )
+                    deleted_topics.append(topic_name)
+                except Exception as e:
+                    failed_deletions.append({
+                        "topic": topic_name,
+                        "error": str(e)
+                    })
+            
+            return {
+                "status": "completed",
+                "organization": org_id,
+                "deleted_topics": deleted_topics,
+                "failed_deletions": failed_deletions,
+                "total_deleted": len(deleted_topics),
+                "deleted_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to delete organization topics: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Topic deletion failed: {str(e)}")
 
 # FastAPI Routes - Infrastructure Management
 infra_service = KubernetesInfrastructureService()
@@ -594,54 +843,285 @@ async def scale_database(org_slug: str, scale_config: dict):
     """Scale organization database instances"""
     return await infra_service.scale_organization_database(org_slug, scale_config["instances"])
 
-# Kafka Management Routes
-@app.post("/api/v1/organizations/{org_slug}/kafka")
-async def create_organization_kafka(org_slug: str, config: dict):
-    """Create organization Kafka cluster"""
-    result = await infra_service.create_organization_kafka(org_slug, config)
-    return result
+# Shared Kafka Management Routes
+@app.get("/api/v1/infrastructure/kafka/status")
+async def get_shared_kafka_status():
+    """Get shared Kafka cluster status"""
+    return await infra_service.get_shared_kafka_status()
 
-@app.get("/api/v1/organizations/{org_slug}/kafka/status")
-async def get_kafka_status(org_slug: str):
-    """Get organization Kafka cluster status"""
-    cluster_name = f"kafka-org-{org_slug}"
-    return await infra_service.get_kafka_connection_info(cluster_name, "rmas-system")
+@app.post("/api/v1/infrastructure/kafka/topics")
+async def create_organization_topic(topic_request: dict):
+    """Create organization-specific topic"""
+    org_id = topic_request.get("org_id")
+    topic_config = {k: v for k, v in topic_request.items() if k != "org_id"}
+    return await infra_service.create_organization_topic(org_id, topic_config)
 
-@app.put("/api/v1/organizations/{org_slug}/kafka/scale")
-async def scale_kafka(org_slug: str, scale_config: dict):
-    """Scale organization Kafka brokers"""
-    return await infra_service.scale_kafka_cluster(org_slug, scale_config["brokers"])
+@app.post("/api/v1/organizations/{org_id}/kafka/topics/bulk")
+async def create_organization_topics_bulk(org_id: str, topics_config: list):
+    """Create standard topics for an organization"""
+    return await infra_service.create_organization_topics(org_id, topics_config)
 
-@app.post("/api/v1/organizations/{org_slug}/kafka/topics")
-async def create_kafka_topic(org_slug: str, topic_config: dict):
-    """Create Kafka topic"""
-    cluster_name = f"kafka-org-{org_slug}"
-    return await infra_service.create_kafka_topic(org_slug, cluster_name, topic_config)
+@app.get("/api/v1/organizations/{org_id}/kafka/topics")
+async def list_organization_topics(org_id: str):
+    """List topics for organization"""
+    return await infra_service.list_organization_topics(org_id)
 
-# Redis Management Routes
-@app.post("/api/v1/organizations/{org_slug}/redis")
-async def create_organization_redis(org_slug: str, config: dict):
-    """Create organization Redis cluster (6 pods: 3 masters + 3 slaves)"""
-    result = await infra_service.create_organization_redis(org_slug, config)
-    return result
+@app.delete("/api/v1/organizations/{org_id}/kafka/topics")
+async def delete_organization_topics(org_id: str):
+    """Delete all topics for organization"""
+    return await infra_service.delete_organization_topics(org_id)
 
-@app.get("/api/v1/organizations/{org_slug}/redis/status")
-async def get_redis_status(org_slug: str):
-    """Get organization Redis cluster status"""
-    cluster_name = f"redis-org-{org_slug}"
-    return await infra_service.get_redis_connection_info(cluster_name, "rmas-system")
+@app.put("/api/v1/infrastructure/kafka/scale")
+async def scale_shared_kafka(scale_config: dict):
+    """Scale shared Kafka brokers (affects all organizations)"""
+    return await infra_service.scale_shared_kafka_cluster(scale_config["brokers"])
 
-@app.get("/api/v1/organizations/{org_slug}/redis/topology")
-async def get_redis_topology(org_slug: str):
+@app.get("/api/v1/infrastructure/kafka/consumer-groups")
+async def get_consumer_groups(org_id: str):
+    """Get Kafka consumer group info for organization"""
+    return await infra_service.get_organization_consumer_groups(org_id)
+
+# Shared Redis Management Routes  
+@app.get("/api/v1/infrastructure/redis/status")
+async def get_shared_redis_status():
+    """Get shared Redis cluster status"""
+    return await infra_service.get_shared_redis_status()
+
+@app.get("/api/v1/infrastructure/redis/topology")
+async def get_redis_topology():
     """Get Redis cluster topology information"""
-    cluster_name = f"redis-org-{org_slug}"
-    return await infra_service.get_redis_topology(cluster_name, "rmas-system")
+    return await infra_service.get_shared_redis_topology()
 
-@app.put("/api/v1/organizations/{org_slug}/redis/scale")
-async def scale_redis(org_slug: str, scale_config: dict):
-    """Scale organization Redis cluster"""
-    return await infra_service.scale_redis_cluster(org_slug, scale_config)
+@app.put("/api/v1/infrastructure/redis/scale")
+async def scale_shared_redis(scale_config: dict):
+    """Scale shared Redis cluster (affects all organizations)"""
+    return await infra_service.scale_shared_redis_cluster(scale_config)
+
+@app.get("/api/v1/infrastructure/redis/stats")
+async def get_redis_stats(org_id: str):
+    """Get Redis key statistics for organization"""
+    return await infra_service.get_organization_redis_stats(org_id)
+
+@app.delete("/api/v1/infrastructure/redis/keys")
+async def flush_organization_keys(org_id: str):
+    """Flush organization-specific keys (emergency operation)"""
+    return await infra_service.flush_organization_redis_keys(org_id)
 ```
+
+## Shared Service Multi-Tenancy Patterns
+
+### Kafka Multi-Tenancy with Per-Organization Topics
+
+#### Topic Creation Strategy
+Each organization gets dedicated topics created automatically when the organization is provisioned. Topics are created with standardized naming and optimal configurations.
+
+```bash
+# Standard topics created per organization:
+{org_id}-device-events          # Device telemetry and events
+{org_id}-alert-notifications    # System alerts and notifications  
+{org_id}-job-execution-results  # Job execution status and results
+{org_id}-audit-logs            # Audit trail events
+{org_id}-monitoring-metrics    # Custom monitoring metrics
+
+# Examples for different organizations:
+acme-device-events             # Acme Corp device events
+acme-alert-notifications       # Acme Corp alerts
+acme-job-execution-results     # Acme Corp job results
+
+techcorp-device-events         # TechCorp device events
+techcorp-alert-notifications   # TechCorp alerts
+techcorp-job-execution-results # TechCorp job results
+```
+
+#### Consumer Group Naming
+Consumer groups are organization-specific: `{org_id}-{service}-{group_name}`
+
+```bash
+# Examples:
+acme-agent-api-device-processor     # Acme's agent API device processor
+acme-monitoring-alert-handler       # Acme's monitoring alert handler
+techcorp-agent-api-device-processor # TechCorp's agent API device processor
+```
+
+#### Producer/Consumer Implementation
+```python
+# Kafka Producer for organization-specific topics
+class OrganizationKafkaProducer:
+    def __init__(self, org_id: str):
+        self.org_id = org_id
+        self.producer = KafkaProducer(
+            bootstrap_servers=['rmas-kafka-shared:9092'],
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        )
+    
+    def send_device_event(self, device_id: str, event_data: dict):
+        topic = f"{self.org_id}-device-events"
+        message = {
+            "org_id": self.org_id,
+            "device_id": device_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": event_data
+        }
+        self.producer.send(topic, value=message)
+    
+    def send_alert(self, alert_type: str, alert_data: dict):
+        topic = f"{self.org_id}-alert-notifications"
+        message = {
+            "org_id": self.org_id,
+            "alert_type": alert_type,
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": alert_data
+        }
+        self.producer.send(topic, value=message)
+
+# Kafka Consumer for organization-specific topics
+class OrganizationKafkaConsumer:
+    def __init__(self, org_id: str, service_name: str, group_name: str):
+        self.org_id = org_id
+        self.topics = [
+            f"{org_id}-device-events",
+            f"{org_id}-alert-notifications",
+            f"{org_id}-job-execution-results"
+        ]
+        self.consumer = KafkaConsumer(
+            *self.topics,
+            bootstrap_servers=['rmas-kafka-shared:9092'],
+            group_id=f"{org_id}-{service_name}-{group_name}",
+            value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+        )
+    
+    def process_messages(self):
+        for message in self.consumer:
+            topic = message.topic
+            org_data = message.value
+            
+            # Route based on topic type
+            if topic.endswith('-device-events'):
+                self.handle_device_event(org_data)
+            elif topic.endswith('-alert-notifications'):
+                self.handle_alert(org_data)
+            elif topic.endswith('-job-execution-results'):
+                self.handle_job_result(org_data)
+```
+```
+
+### Redis Multi-Tenancy with Key Prefixes
+
+#### Key Naming Convention
+All Redis keys use the prefix pattern: `{org_id}:{key_type}:{identifier}`
+
+```bash
+# Examples:
+acme:session:user_123           # User session for Acme
+acme:cache:device_456           # Device cache for Acme  
+acme:rate_limit:api_789         # Rate limiting for Acme API
+acme:job_status:job_101         # Job status for Acme
+
+techcorp:session:user_456       # User session for TechCorp
+techcorp:cache:device_789       # Device cache for TechCorp
+```
+
+#### Redis Client Implementation
+```python
+import redis
+from typing import Optional, Any
+
+class OrganizationRedisClient:
+    def __init__(self, org_id: str):
+        self.org_id = org_id
+        self.redis_client = redis.RedisCluster(
+            startup_nodes=[
+                {"host": "rmas-redis-shared", "port": "6379"}
+            ],
+            decode_responses=True,
+            skip_full_coverage_check=True
+        )
+    
+    def _get_key(self, key: str) -> str:
+        """Generate org-prefixed key"""
+        return f"{self.org_id}:{key}"
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+        """Set value with org prefix"""
+        org_key = self._get_key(key)
+        if ttl:
+            return self.redis_client.setex(org_key, ttl, value)
+        return self.redis_client.set(org_key, value)
+    
+    def get(self, key: str) -> Optional[str]:
+        """Get value with org prefix"""
+        org_key = self._get_key(key)
+        return self.redis_client.get(org_key)
+    
+    def delete(self, key: str) -> int:
+        """Delete key with org prefix"""
+        org_key = self._get_key(key)
+        return self.redis_client.delete(org_key)
+    
+    def get_org_keys(self, pattern: str = "*") -> list:
+        """Get all keys for this organization"""
+        org_pattern = f"{self.org_id}:{pattern}"
+        return self.redis_client.keys(org_pattern)
+    
+    def flush_org_data(self) -> int:
+        """Emergency: Delete all organization data"""
+        org_keys = self.get_org_keys()
+        if org_keys:
+            return self.redis_client.delete(*org_keys)
+        return 0
+
+# Usage Examples
+redis_client = OrganizationRedisClient("acme")
+
+# Session storage
+redis_client.set("session:user_123", json.dumps(session_data), ttl=3600)
+session = redis_client.get("session:user_123")
+
+# Device caching
+redis_client.set("cache:device_456", json.dumps(device_info), ttl=300)
+device = redis_client.get("cache:device_456")
+
+# Rate limiting
+redis_client.set("rate_limit:api_789", "100", ttl=60)
+```
+
+### Multi-Tenancy Isolation Benefits
+
+#### Kafka Benefits:
+- **High Throughput**: Shared cluster handles all organizations efficiently
+- **Topic Isolation**: Organization data completely separated by topics
+- **Consumer Group Isolation**: No cross-organization message consumption
+- **Scalability**: Single cluster scales for all organizations
+- **Cost Efficiency**: Shared infrastructure reduces resource overhead
+
+#### Redis Benefits:
+- **Memory Efficiency**: Shared cluster optimizes memory usage
+- **Key Isolation**: Organization data separated by key prefixes
+- **Performance**: Single cluster provides consistent performance
+- **Management Simplicity**: One cluster to monitor and maintain
+- **Backup Efficiency**: Single backup strategy for all organization data
+
+#### Monitoring and Metrics:
+```python
+# Organization-specific monitoring
+def get_organization_metrics(org_id: str):
+    kafka_metrics = {
+        "topics": get_org_topic_count(org_id),
+        "messages_per_second": get_org_message_rate(org_id),
+        "consumer_lag": get_org_consumer_lag(org_id)
+    }
+    
+    redis_metrics = {
+        "keys": get_org_key_count(org_id),
+        "memory_usage": get_org_memory_usage(org_id),
+        "hit_rate": get_org_cache_hit_rate(org_id)
+    }
+    
+    return {
+        "organization": org_id,
+        "kafka": kafka_metrics,
+        "redis": redis_metrics
+    }
 ```
 
 ## Database Initialization Scripts
@@ -910,11 +1390,11 @@ INSERT INTO device_types (master_device_type_id, name, custom_fields) VALUES
 ```
 ```
 
-## Laravel Integration with Database Service API
+## Laravel Integration with Infrastructure Service API
 
-The Laravel application interacts with the Python Database Service through HTTP API calls, providing a clean separation between the application layer and database management operations.
+The Laravel application interacts with the Python Infrastructure Service through HTTP API calls for database management, while using shared Kafka and Redis services directly with organization-specific routing and key prefixes.
 
-### Laravel Database Service Client
+### Laravel Infrastructure Service Client
 
 ```php
 <?php
@@ -923,17 +1403,17 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Exceptions\DatabaseServiceException;
+use App\Exceptions\InfrastructureServiceException;
 
-class DatabaseServiceClient
+class InfrastructureServiceClient
 {
     private string $baseUrl;
     private string $apiKey;
     
     public function __construct()
     {
-        $this->baseUrl = config('services.database.url', 'http://database-service:8080');
-        $this->apiKey = config('services.database.api_key');
+        $this->baseUrl = config('services.infrastructure.url', 'http://infrastructure-service:8080');
+        $this->apiKey = config('services.infrastructure.api_key');
     }
     
     /**
@@ -1119,7 +1599,113 @@ class DatabaseServiceClient
             
         } catch (\Exception $e) {
             Log::error("Database deletion error: " . $e->getMessage());
-            throw new DatabaseServiceException("Database deletion failed", 500, $e);
+            throw new InfrastructureServiceException("Database deletion failed", 500, $e);
+        }
+    }
+    
+    /**
+     * Get shared Kafka cluster status
+     */
+    public function getSharedKafkaStatus(): array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$this->apiKey}"
+            ])->get("{$this->baseUrl}/api/v1/infrastructure/kafka/status");
+            
+            if ($response->successful()) {
+                return $response->json();
+            }
+            
+            throw new InfrastructureServiceException(
+                "Failed to get Kafka status: " . $response->body(),
+                $response->status()
+            );
+            
+        } catch (\Exception $e) {
+            Log::error("Kafka status check failed: " . $e->getMessage());
+            throw new InfrastructureServiceException("Kafka status check failed", 500, $e);
+        }
+    }
+    
+    /**
+     * Create organization-specific topic with org_id prefix
+     */
+    public function createOrganizationTopic(string $orgId, array $topicConfig): array
+    {
+        $requestData = array_merge(['org_id' => $orgId], $topicConfig);
+        
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$this->apiKey}",
+                'Content-Type' => 'application/json'
+            ])->timeout(60)
+              ->post("{$this->baseUrl}/api/v1/infrastructure/kafka/topics", $requestData);
+            
+            if ($response->successful()) {
+                Log::info("Kafka topic created for organization: {$orgId}");
+                return $response->json();
+            }
+            
+            throw new InfrastructureServiceException(
+                "Topic creation failed: " . $response->body(),
+                $response->status()
+            );
+            
+        } catch (\Exception $e) {
+            Log::error("Topic creation error: " . $e->getMessage());
+            throw new InfrastructureServiceException("Topic creation failed", 500, $e);
+        }
+    }
+    
+    /**
+     * Get shared Redis cluster status
+     */
+    public function getSharedRedisStatus(): array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$this->apiKey}"
+            ])->get("{$this->baseUrl}/api/v1/infrastructure/redis/status");
+            
+            if ($response->successful()) {
+                return $response->json();
+            }
+            
+            throw new InfrastructureServiceException(
+                "Failed to get Redis status: " . $response->body(),
+                $response->status()
+            );
+            
+        } catch (\Exception $e) {
+            Log::error("Redis status check failed: " . $e->getMessage());
+            throw new InfrastructureServiceException("Redis status check failed", 500, $e);
+        }
+    }
+    
+    /**
+     * Get Redis usage statistics for organization
+     */
+    public function getOrganizationRedisStats(string $orgId): array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$this->apiKey}"
+            ])->get("{$this->baseUrl}/api/v1/infrastructure/redis/stats?org_id={$orgId}");
+            
+            if ($response->successful()) {
+                return $response->json();
+            }
+            
+            throw new InfrastructureServiceException(
+                "Failed to get Redis stats: " . $response->body(),
+                $response->status()
+            );
+            
+        } catch (\Exception $e) {
+            Log::error("Redis stats check failed: " . $e->getMessage());
+            throw new InfrastructureServiceException("Redis stats check failed", 500, $e);
+        }
         }
     }
 }
