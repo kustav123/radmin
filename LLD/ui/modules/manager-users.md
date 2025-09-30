@@ -11,7 +11,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Global Users List Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Users                                           Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -80,7 +80,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Create Admin User Form
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                        ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░           ║
 ║     ░░░ ┌──────────────────────────────────────────────────────────┐ ░░░     ║
@@ -162,7 +162,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## User Details View
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Users > John Doe                               Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -244,7 +244,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## System Activity Monitor
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ System Activity Monitor                                          [✕ Close] ║
 ╠══════════════════════════════════════════════════════════════════════════════╣

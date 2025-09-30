@@ -22,7 +22,7 @@ For detailed UI mockups and field specifications, see the individual module docu
 
 ## Login Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
 ║                              RMAS Manager Portal                             ║
@@ -56,7 +56,7 @@ For detailed UI mockups and field specifications, see the individual module docu
 
 ## Dashboard Overview
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager                                                       Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣

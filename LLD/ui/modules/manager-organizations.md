@@ -11,7 +11,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Main Organizations List Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Organizations                                       Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -74,7 +74,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Create Organization Form
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                        ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░           ║
 ║     ░░░ ┌──────────────────────────────────────────────────────────┐ ░░░     ║
@@ -156,7 +156,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Organization Details View
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Organizations > Acme Corporation               Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -247,7 +247,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Organization Settings Form
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░         ║
 ║   ░░░ ┌────────────────────────────────────────────────────────────┐ ░░░   ║
@@ -329,7 +329,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Database Management Panel
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ Database Management: rmas_org_acme_corp                           [✕ Close] ║
 ╠══════════════════════════════════════════════════════════════════════════════╣

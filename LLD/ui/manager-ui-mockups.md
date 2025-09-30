@@ -22,7 +22,7 @@ For detailed UI mockups and field specifications, see the individual module docu
 
 ## Login Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
 ║                              RMAS Manager Portal                             ║
@@ -52,11 +52,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║                              v1.2.3 | © 2025 RMAS                           ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Dashboard Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager    Organizations    Device Types    Managers    Analytics   🔔║
 ║                                                                        Admin ▼║
@@ -101,11 +101,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║ └──────────────────────────────────────────────────────────────────────────┘ ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Organizations Management Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Organizations                                       Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -144,11 +144,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║ Showing 4 of 25 organizations                           « Previous | Next » ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Create Organization Modal
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                    ░░░░░░░                                   ║
 ║                 ░░░ ┌─────────────────────────────────────────┐ ░░░          ║
@@ -179,11 +179,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║                 ░░░ └─────────────────────────────────────────┘ ░░░          ║
 ║                                    ░░░░░░░                                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Device Types Management
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Device Types                                       Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -223,11 +223,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║ Legend: [👁️] View Details  [✏️] Edit  [🔄] Sync to All Organizations         ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Create/Edit Device Type Modal
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    ║
 ║         ░░░ ┌─────────────────────────────────────────────────────────┐ ░░░  ║
@@ -294,11 +294,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║         ░░░ └─────────────────────────────────────────────────────────┘ ░░░  ║
 ║                                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Add Custom Field Modal
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                               ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                   ║
 ║      ░░░ ┌─────────────────────────────────────────────────────────────┐ ░░░ ║
@@ -352,11 +352,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║      ░░░ └─────────────────────────────────────────────────────────────┘ ░░░ ║
 ║                               ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## System Analytics Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Analytics                                          Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -399,11 +399,11 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║ └──────────────────────────────────────────────────────────────────────────┘ ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Organization Health Status Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > System Health                                      Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -445,12 +445,12 @@ For detailed UI mockups and field specifications, see the individual module docu
 ║ └──────────────────────────────────────────────────────────────────────────┘ ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-```
+```text
 
 ## Color Scheme and Design System
 
 ### Color Palette
-```
+```text
 Primary Colors:
 - Primary Blue:   #1976D2
 - Primary Dark:   #1565C0  
@@ -471,14 +471,14 @@ Text:
 - Primary Text:  #212121
 - Secondary:     #757575
 - Hint Text:     #BDBDBD
-```
+```text
 
 ### Typography
-```
+```text
 Headings:  Roboto, 700 weight
 Body Text: Roboto, 400 weight
 Code:      'Roboto Mono', monospace
-```
+```text
 
 ### Component Specifications
 

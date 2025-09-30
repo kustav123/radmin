@@ -11,7 +11,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Device Groups List Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏢 Acme Corporation  > Device Groups                              john.doe ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -99,7 +99,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Create Device Group Form
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                     ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░          ║
 ║   ░░░ ┌──────────────────────────────────────────────────────────────┐ ░░░  ║
@@ -213,7 +213,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Device Group Details View
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏢 Acme Corporation  > Device Groups > IT Servers                john.doe ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣

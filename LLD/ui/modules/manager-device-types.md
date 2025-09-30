@@ -1,4 +1,7 @@
-# Manager UI - Device Types Module
+# Manager U## Device Types List Page
+
+```text
+╔══════════════════════════════════════════════════════════════════════════════╗Device Types Module
 
 This document provides comprehensive UI mockups and field specifications for the Device Types management module in the Manager UI.
 
@@ -11,7 +14,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Main Device Types List Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Device Types                                       Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -75,7 +78,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Create Device Type Form
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                      ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░     ║
 ║   ░░░ ┌──────────────────────────────────────────────────────────────┐ ░░░   ║
@@ -136,7 +139,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Custom Fields Configuration Step
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                      ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░     ║
 ║   ░░░ ┌──────────────────────────────────────────────────────────────┐ ░░░   ║
@@ -210,7 +213,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Add Custom Field Modal
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                         ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░         ║
 ║     ░░░ ┌───────────────────────────────────────────────────────────┐ ░░░   ║
@@ -292,7 +295,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Device Type Details View
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏠 RMAS Manager  > Device Types > Windows Desktop                     Admin ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣

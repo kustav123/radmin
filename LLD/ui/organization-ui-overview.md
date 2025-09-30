@@ -27,7 +27,7 @@ For detailed UI mockups and field specifications, see the individual module docu
 
 ## Enhanced Navigation Menu
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 🏢 Acme Corporation                                    👤 John Doe     [⚙️] │
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -74,7 +74,7 @@ For detailed UI mockups and field specifications, see the individual module docu
 
 ## Dashboard Overview
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏢 Acme Corporation                                           john.doe ▼   ║
 ╠══════════════════════════════════════════════════════════════════════════════╣

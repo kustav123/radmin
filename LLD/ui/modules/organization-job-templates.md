@@ -11,7 +11,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Job Templates List Page
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏢 Acme Corporation  > Job Templates                              john.doe ▼║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -100,7 +100,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Create Job Template Form
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░         ║
 ║   ░░░ ┌────────────────────────────────────────────────────────────┐ ░░░   ║
@@ -246,7 +246,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Job Execution Monitor
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏢 Acme Corporation  > Job Templates > Security Updates > Execution         ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
@@ -334,7 +334,7 @@ This document provides comprehensive UI mockups and field specifications for the
 
 ## Job History & Reports
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║ 🏢 Acme Corporation  > Job Templates > System Health Check > History        ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
