@@ -6,33 +6,33 @@ This document outlines the cloud-native multi-tenant architecture strategy for R
 
 ```mermaid
 graph TB
-    subgraph "Kubernetes Cluster"
-        subgraph "Application Layer"
-            LaravelApp[Laravel Application<br/>Manager & Org UIs]
-            PythonInfraService[Python Infrastructure Service<br/>CNPG, Strimzi & Redis API Integration]
-            AAPI1[Agent API Instance 1]
-            AAPI2[Agent API Instance 2]
+    subgraph Kubernetes["Kubernetes Cluster"]
+        subgraph Application["Application Layer"]
+            LaravelApp["Laravel Application<br/>Manager & Org UIs"]
+            PythonInfraService["Python Infrastructure Service<br/>CNPG, Strimzi & Redis API Integration"]
+            AAPI1["Agent API Instance 1"]
+            AAPI2["Agent API Instance 2"]
         end
         
-        subgraph "Operator Management"
-            CNPGOperator[CNPG Operator<br/>PostgreSQL Lifecycle]
-            StrimziOperator[Strimzi Operator<br/>Kafka Lifecycle]
-            RedisOperator[Redis Operator<br/>Redis Cluster Lifecycle]
-            MasterCluster[Master PostgreSQL Cluster<br/>rmas_master]
+        subgraph Operators["Operator Management"]
+            CNPGOperator["CNPG Operator<br/>PostgreSQL Lifecycle"]
+            StrimziOperator["Strimzi Operator<br/>Kafka Lifecycle"]
+            RedisOperator["Redis Operator<br/>Redis Cluster Lifecycle"]
+            MasterCluster["Master PostgreSQL Cluster<br/>rmas_master"]
         end
         
-        subgraph "Shared Infrastructure (All Orgs)"
-            KafkaCluster[Shared Kafka Cluster<br/>Multi-tenant with org_id routing]
-            RedisCluster[Shared Redis Cluster<br/>6-pod: 3 masters + 3 slaves<br/>Org isolation via key prefixes]
+        subgraph SharedInfra["Shared Infrastructure - All Orgs"]
+            KafkaCluster["Shared Kafka Cluster<br/>Per-organization topics"]
+            RedisCluster["Shared Redis Cluster<br/>6-pod: 3 masters + 3 slaves<br/>Org isolation via key prefixes"]
         end
         
-        subgraph "Organization Database Clusters (Isolated)"
-            OrgCluster1[Org 1 PostgreSQL Cluster<br/>rmas_org_acme]
-            OrgCluster2[Org 2 PostgreSQL Cluster<br/>rmas_org_tech]
-            OrgClusterN[Org N PostgreSQL Cluster<br/>rmas_org_xyz]
+        subgraph OrgClusters["Organization Database Clusters - Isolated"]
+            OrgCluster1["Org 1 PostgreSQL Cluster<br/>rmas_org_acme"]
+            OrgCluster2["Org 2 PostgreSQL Cluster<br/>rmas_org_tech"]
+            OrgClusterN["Org N PostgreSQL Cluster<br/>rmas_org_xyz"]
         end
         
-        subgraph "Backup & Recovery"
+        subgraph Backup["Backup & Recovery"]
             BackupStorage[S3/MinIO Backup Storage]
             CNPGBackup[CNPG Backup Management]
             KafkaBackup[Kafka Topic Backup]
@@ -83,24 +83,24 @@ This hybrid approach optimizes resource utilization while maintaining proper dat
 
 ```mermaid
 graph TB
-    subgraph "API Layer"
-        LaravelApp[Laravel Application<br/>Manager & Org UIs]
-        FastAPI[Python Infrastructure Service<br/>Multi-Operator API Wrapper]
-        RestAPI[RESTful Infrastructure API<br/>Port 8080/api/v1/]
+    subgraph API["API Layer"]
+        LaravelApp["Laravel Application<br/>Manager & Org UIs"]
+        FastAPI["Python Infrastructure Service<br/>Multi-Operator API Wrapper"]
+        RestAPI["RESTful Infrastructure API<br/>Port 8080/api/v1/"]
     end
     
-    subgraph "Infrastructure Management Layer"
-        CNPGOperator[CNPG Operator<br/>PostgreSQL Lifecycle]
-        StrimziOperator[Strimzi Operator<br/>Kafka Lifecycle]
-        RedisOperator[Redis Operator<br/>Redis Cluster Lifecycle]
-        InitScripts[Database Init Scripts<br/>Default Tables & Data]
-        BackupManager[Backup & Recovery<br/>Automated Management]
+    subgraph Management["Infrastructure Management Layer"]
+        CNPGOperator["CNPG Operator<br/>PostgreSQL Lifecycle"]
+        StrimziOperator["Strimzi Operator<br/>Kafka Lifecycle"]
+        RedisOperator["Redis Operator<br/>Redis Cluster Lifecycle"]
+        InitScripts["Database Init Scripts<br/>Default Tables & Data"]
+        BackupManager["Backup & Recovery<br/>Automated Management"]
     end
     
-    subgraph "Infrastructure Services"
-        OrgPostgres[Organization PostgreSQL Clusters<br/>rmas_org_* (Isolated)]
-        SharedKafka[Shared Kafka Cluster<br/>org_id based topics/routing]
-        SharedRedis[Shared Redis Cluster<br/>org_id key prefixes]
+    subgraph Services["Infrastructure Services"]
+        OrgPostgres["Organization PostgreSQL Clusters<br/>rmas_org_* Isolated"]
+        SharedKafka["Shared Kafka Cluster<br/>Per-organization topics"]
+        SharedRedis["Shared Redis Cluster<br/>org_id key prefixes"]
     end
     
     LaravelApp -->|HTTP API Calls| FastAPI

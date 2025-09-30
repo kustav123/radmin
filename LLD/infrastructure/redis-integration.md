@@ -7,27 +7,27 @@ Redis serves as the primary caching layer and session store for the RMAS system 
 ### 6-Pod Cluster Deployment (3 Masters + 3 Slaves)
 ```mermaid
 graph TB
-    subgraph "Redis Cluster (6 Pods Total)"
-        subgraph "Master Nodes (3 Pods)"
-            RedisMaster1[Redis Master 1<br/>Port: 6379<br/>Slots: 0-5460<br/>Pod: redis-master-0]
-            RedisMaster2[Redis Master 2<br/>Port: 6379<br/>Slots: 5461-10922<br/>Pod: redis-master-1]
-            RedisMaster3[Redis Master 3<br/>Port: 6379<br/>Slots: 10923-16383<br/>Pod: redis-master-2]
+    subgraph RedisCluster["Redis Cluster - 6 Pods Total"]
+        subgraph Masters["Master Nodes - 3 Pods"]
+            RedisMaster1["Redis Master 1<br/>Port: 6379<br/>Slots: 0-5460<br/>Pod: redis-master-0"]
+            RedisMaster2["Redis Master 2<br/>Port: 6379<br/>Slots: 5461-10922<br/>Pod: redis-master-1"]
+            RedisMaster3["Redis Master 3<br/>Port: 6379<br/>Slots: 10923-16383<br/>Pod: redis-master-2"]
         end
         
-        subgraph "Slave Nodes (3 Pods)"
-            RedisSlave1[Redis Slave 1<br/>Port: 6379<br/>Replica of Master 1<br/>Pod: redis-slave-0]
-            RedisSlave2[Redis Slave 2<br/>Port: 6379<br/>Replica of Master 2<br/>Pod: redis-slave-1]
-            RedisSlave3[Redis Slave 3<br/>Port: 6379<br/>Replica of Master 3<br/>Pod: redis-slave-2]
+        subgraph Slaves["Slave Nodes - 3 Pods"]
+            RedisSlave1["Redis Slave 1<br/>Port: 6379<br/>Replica of Master 1<br/>Pod: redis-slave-0"]
+            RedisSlave2["Redis Slave 2<br/>Port: 6379<br/>Replica of Master 2<br/>Pod: redis-slave-1"]
+            RedisSlave3["Redis Slave 3<br/>Port: 6379<br/>Replica of Master 3<br/>Pod: redis-slave-2"]
         end
     end
     
-    subgraph "Application Services"
-        Laravel[Laravel App<br/>Session Storage]
-        FastAPI[Agent API<br/>Rate Limiting]
-        MonitoringEngine[Monitoring Engine<br/>Metrics Cache]
-        AlertEngine[Alert Engine<br/>State Management]
-        SNMPMonitoring[SNMP Monitoring<br/>Device Cache]
-        DBService[Database Service<br/>Connection Pooling]
+    subgraph Applications["Application Services"]
+        Laravel["Laravel App<br/>Session Storage"]
+        FastAPI["Agent API<br/>Rate Limiting"]
+        MonitoringEngine["Monitoring Engine<br/>Metrics Cache"]
+        AlertEngine["Alert Engine<br/>State Management"]
+        SNMPMonitoring["SNMP Monitoring<br/>Device Cache"]
+        DBService["Database Service<br/>Connection Pooling"]
     end
     
     Laravel --> RedisMaster1

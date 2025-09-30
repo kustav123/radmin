@@ -6,65 +6,65 @@ RMAS is built as a cloud-native system deployed on Kubernetes with operator-mana
 
 ```mermaid
 graph TB
-    subgraph "Kubernetes Cluster"
-        subgraph "Web Layer"
-            ManagerUI[Manager UI<br/>Laravel]
-            OrgUI[Organization UI<br/>Laravel + SNMP MIB Management]
+    subgraph KubernetesCluster["Kubernetes Cluster"]
+        subgraph WebLayer["Web Layer"]
+            ManagerUI["Manager UI<br/>Laravel"]
+            OrgUI["Organization UI<br/>Laravel + SNMP MIB Management"]
         end
         
-        subgraph "API Layer"
-            AdminAPI[Admin API<br/>Laravel]
-            AgentAPI[Agent API<br/>FastAPI]
-            DBService[Database Service<br/>Python + CNPG API]
+        subgraph APILayer["API Layer"]
+            AdminAPI["Admin API<br/>Laravel"]
+            AgentAPI["Agent API<br/>FastAPI"]
+            DBService["Database Service<br/>Python + CNPG API"]
         end
         
-        subgraph "Infrastructure Services"
-            subgraph "Redis Cluster (6-Node)"
-                RedisM1[Redis Master 1]
-                RedisM2[Redis Master 2] 
-                RedisM3[Redis Master 3]
-                RedisR1[Redis Replica 1]
-                RedisR2[Redis Replica 2]
-                RedisR3[Redis Replica 3]
+        subgraph InfraServices["Infrastructure Services"]
+            subgraph RedisCluster["Redis Cluster - 6-Node"]
+                RedisM1["Redis Master 1"]
+                RedisM2["Redis Master 2"] 
+                RedisM3["Redis Master 3"]
+                RedisR1["Redis Replica 1"]
+                RedisR2["Redis Replica 2"]
+                RedisR3["Redis Replica 3"]
             end
             
-            subgraph "Kafka Cluster (KRaft)"
-                KafkaB1[Kafka Broker 1]
-                KafkaB2[Kafka Broker 2]
-                KafkaB3[Kafka Broker 3]
-                KRaft[KRaft Controller<br/>No ZooKeeper]
+            subgraph KafkaCluster["Kafka Cluster - KRaft"]
+                KafkaB1["Kafka Broker 1"]
+                KafkaB2["Kafka Broker 2"]
+                KafkaB3["Kafka Broker 3"]
+                KRaft["KRaft Controller<br/>No ZooKeeper"]
             end
             
-            subgraph "PostgreSQL (CNPG)"
-                PGPrimary[PostgreSQL Primary]
-                PGReplica1[PostgreSQL Replica 1]
-                PGReplica2[PostgreSQL Replica 2]
+            subgraph PostgreSQL["PostgreSQL - CNPG"]
+                PGPrimary["PostgreSQL Primary"]
+                PGReplica1["PostgreSQL Replica 1"]
+                PGReplica2["PostgreSQL Replica 2"]
             end
         end
         
-        subgraph "Monitoring Services"
-            AdditionalMonitoring[Additional Monitoring Engine<br/>InfluxDB + Prometheus]
-            AlertEngine[Alert System<br/>Multi-channel Notifications]
-            SNMPMonitoring[SNMP Monitoring<br/>Agentless + MIB Support]
+        subgraph MonitoringServices["Monitoring Services"]
+            AdditionalMonitoring["Additional Monitoring Engine<br/>InfluxDB + Prometheus"]
+            AlertEngine["Alert System<br/>Multi-channel Notifications"]
+            SNMPMonitoring["SNMP Monitoring<br/>Agentless + MIB Support"]
         end
         
-        subgraph "Kubernetes Operators"
-            StrimziOp[Strimzi Operator<br/>Kafka Management]
-            CNPGOp[CNPG Operator<br/>PostgreSQL Management]
-            RedisOp[Redis Operator<br/>Cluster Management]
+        subgraph K8sOperators["Kubernetes Operators"]
+            StrimziOp["Strimzi Operator<br/>Kafka Management"]
+            CNPGOp["CNPG Operator<br/>PostgreSQL Management"]
+            RedisOp["Redis Operator<br/>Cluster Management"]
         end
     end
     
-    subgraph "External Devices"
-        Agents[Device Agents<br/>Python/Go]
-        SNMPDevices[SNMP Devices<br/>Network Equipment]
-        ManualDevices[Manual Entry<br/>Custom Fields]
+    subgraph ExternalDevices["External Devices"]
+        Agents["Device Agents<br/>Python/Go"]
+        SNMPDevices["SNMP Devices<br/>Network Equipment"]
+        ManualDevices["Manual Entry<br/>Custom Fields"]
     end
     
-    subgraph "External Services"
-        EmailSMTP[Email/SMTP]
-        Webhooks[Webhooks/APIs]
-        SNMPTraps[SNMP Trap Receivers]
+    subgraph ExternalServices["External Services"]
+        EmailSMTP["Email/SMTP"]
+        Webhooks["Webhooks/APIs"]
+        SNMPTraps["SNMP Trap Receivers"]
     end
     
     %% Web Layer Connections

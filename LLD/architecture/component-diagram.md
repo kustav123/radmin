@@ -4,34 +4,34 @@
 
 ```mermaid
 graph TD
-    subgraph "Frontend Layer"
-        MUI[Manager UI]
-        OUI[Organization UI]
+    subgraph Frontend["Frontend Layer"]
+        MUI["Manager UI"]
+        OUI["Organization UI"]
     end
     
-    subgraph "API Gateway Layer"
-        Gateway[API Gateway/Load Balancer]
+    subgraph Gateway["API Gateway Layer"]
+        Gateway["API Gateway/Load Balancer"]
     end
     
-    subgraph "Application Services"
-        AdminAPI[Admin API Service<br/>Laravel]
-        AgentAPI[Agent API Service<br/>FastAPI]
-        AuthSvc[Authentication Service]
-        NotificationSvc[Notification Service]
-        JobScheduler[Job Scheduler Service]
+    subgraph Services["Application Services"]
+        AdminAPI["Admin API Service<br/>Laravel"]
+        AgentAPI["Agent API Service<br/>FastAPI"]
+        AuthSvc["Authentication Service"]
+        NotificationSvc["Notification Service"]
+        JobScheduler["Job Scheduler Service"]
     end
     
-    subgraph "Data Layer"
-        MasterDB[(Master Database)]
-        OrgDB1[(Organization DB 1)]
-        OrgDB2[(Organization DB 2)]
-        Redis[(Redis Cache)]
+    subgraph DataLayer["Data Layer"]
+        MasterDB[("Master Database")]
+        OrgDB1[("Organization DB 1")]
+        OrgDB2[("Organization DB 2")]
+        Redis[("Redis Cache")]
     end
     
-    subgraph "External Systems"
-        Agents[Remote Agents]
-        SMTP[Email Service]
-        Monitoring[Monitoring Tools]
+    subgraph External["External Systems"]
+        Agents["Remote Agents"]
+        SMTP["Email Service"]
+        Monitoring["Monitoring Tools"]
     end
     
     MUI --> Gateway

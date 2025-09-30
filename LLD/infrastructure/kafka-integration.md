@@ -7,35 +7,35 @@ Apache Kafka serves as the central message broker for the RMAS system using KRaf
 ### KRaft Cluster Configuration
 ```mermaid
 graph TB
-    subgraph "Kafka Cluster (KRaft Mode)"
-        subgraph "Kafka Brokers + Controllers"
-            Broker1[Kafka Broker/Controller 1<br/>Leader for Partitions 0,3,6,9]
-            Broker2[Kafka Broker/Controller 2<br/>Leader for Partitions 1,4,7,10]
-            Broker3[Kafka Broker/Controller 3<br/>Leader for Partitions 2,5,8,11]
+    subgraph KafkaCluster["Kafka Cluster - KRaft Mode"]
+        subgraph Brokers["Kafka Brokers + Controllers"]
+            Broker1["Kafka Broker/Controller 1<br/>Leader for Partitions 0,3,6,9"]
+            Broker2["Kafka Broker/Controller 2<br/>Leader for Partitions 1,4,7,10"]
+            Broker3["Kafka Broker/Controller 3<br/>Leader for Partitions 2,5,8,11"]
         end
         
-        KRaftConsensus[KRaft Consensus<br/>Self-Managed Metadata<br/>No ZooKeeper]
+        KRaftConsensus["KRaft Consensus<br/>Self-Managed Metadata<br/>No ZooKeeper"]
     end
     
-    subgraph "Strimzi Operator Management"
-        StrimziOperator[Strimzi Operator<br/>Kubernetes Native]
-        TopicOperator[Topic Operator<br/>Automatic Topic Management]
-        UserOperator[User Operator<br/>ACL Management]
+    subgraph StrimziMgmt["Strimzi Operator Management"]
+        StrimziOperator["Strimzi Operator<br/>Kubernetes Native"]
+        TopicOperator["Topic Operator<br/>Automatic Topic Management"]
+        UserOperator["User Operator<br/>ACL Management"]
     end
     
-    subgraph "Producers"
-        AgentAPI[Agent API<br/>FastAPI]
-        LaravelApp[Laravel App]
-        SNMPMonitoring[SNMP Monitoring]
-        AdditionalMonitoring[Additional Monitoring Engine]
-        DBService[Database Service]
+    subgraph Producers["Producers"]
+        AgentAPI["Agent API<br/>FastAPI"]
+        LaravelApp["Laravel App"]
+        SNMPMonitoring["SNMP Monitoring"]
+        AdditionalMonitoring["Additional Monitoring Engine"]
+        DBService["Database Service"]
     end
     
-    subgraph "Consumers"
-        MonitoringConsumer[Additional Monitoring Engine]
-        AlertEngine[Alert Engine]
-        AuditProcessor[Audit Processor]
-        AnalyticsEngine[Analytics Engine]
+    subgraph Consumers["Consumers"]
+        MonitoringConsumer["Additional Monitoring Engine"]
+        AlertEngine["Alert Engine"]
+        AuditProcessor["Audit Processor"]
+        AnalyticsEngine["Analytics Engine"]
     end
     
     %% KRaft consensus
