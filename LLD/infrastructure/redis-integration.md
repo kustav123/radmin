@@ -1,33 +1,33 @@
 # Redis Cluster Integration
 
-Redis serves as the primary caching layer and session store for the RMAS system using a 6-node cluster configuration for high availability and scalability.
+Redis serves as the primary caching layer and session store for the RMAS system using a high-availability 6-pod cluster configuration (3 masters + 3 slaves) for optimal performance and fault tolerance.
 
 ## Redis Cluster Architecture
 
-### 6-Node Cluster Deployment
+### 6-Pod Cluster Deployment (3 Masters + 3 Slaves)
 ```mermaid
 graph TB
-    subgraph "Redis Cluster (6-Node)"
-        subgraph "Master Nodes"
-            RedisMaster1[Redis Master 1<br/>Slots: 0-5460]
-            RedisMaster2[Redis Master 2<br/>Slots: 5461-10922]
-            RedisMaster3[Redis Master 3<br/>Slots: 10923-16383]
+    subgraph "Redis Cluster (6 Pods Total)"
+        subgraph "Master Nodes (3 Pods)"
+            RedisMaster1[Redis Master 1<br/>Port: 6379<br/>Slots: 0-5460<br/>Pod: redis-master-0]
+            RedisMaster2[Redis Master 2<br/>Port: 6379<br/>Slots: 5461-10922<br/>Pod: redis-master-1]
+            RedisMaster3[Redis Master 3<br/>Port: 6379<br/>Slots: 10923-16383<br/>Pod: redis-master-2]
         end
         
-        subgraph "Replica Nodes"
-            RedisReplica1[Redis Replica 1<br/>Master 1 Backup]
-            RedisReplica2[Redis Replica 2<br/>Master 2 Backup]
-            RedisReplica3[Redis Replica 3<br/>Master 3 Backup]
+        subgraph "Slave Nodes (3 Pods)"
+            RedisSlave1[Redis Slave 1<br/>Port: 6379<br/>Replica of Master 1<br/>Pod: redis-slave-0]
+            RedisSlave2[Redis Slave 2<br/>Port: 6379<br/>Replica of Master 2<br/>Pod: redis-slave-1]
+            RedisSlave3[Redis Slave 3<br/>Port: 6379<br/>Replica of Master 3<br/>Pod: redis-slave-2]
         end
     end
     
     subgraph "Application Services"
-        Laravel[Laravel App]
-        FastAPI[Agent API]
-        MonitoringEngine[Additional Monitoring Engine]
-        AlertEngine[Alert Engine]
-        SNMPMonitoring[SNMP Monitoring]
-        DBService[Database Service]
+        Laravel[Laravel App<br/>Session Storage]
+        FastAPI[Agent API<br/>Rate Limiting]
+        MonitoringEngine[Monitoring Engine<br/>Metrics Cache]
+        AlertEngine[Alert Engine<br/>State Management]
+        SNMPMonitoring[SNMP Monitoring<br/>Device Cache]
+        DBService[Database Service<br/>Connection Pooling]
     end
     
     Laravel --> RedisMaster1
@@ -41,48 +41,180 @@ graph TB
     SNMPMonitoring --> RedisMaster3
     DBService --> RedisMaster2
     
-    RedisMaster1 -.-> RedisReplica1
-    RedisMaster2 -.-> RedisReplica2
-    RedisMaster3 -.-> RedisReplica3
+    RedisMaster1 -.->|Replication| RedisSlave1
+    RedisMaster2 -.->|Replication| RedisSlave2
+    RedisMaster3 -.->|Replication| RedisSlave3
+    
+    RedisSlave1 -.->|Failover Ready| RedisMaster1
+    RedisSlave2 -.->|Failover Ready| RedisMaster2
+    RedisSlave3 -.->|Failover Ready| RedisMaster3
 ```
+
+## 6-Pod Redis Cluster Configuration
+
+### Cluster Topology Overview
+- **Total Pods**: 6 (3 Masters + 3 Slaves)
+- **Master Nodes**: 3 pods handling write operations
+- **Slave Nodes**: 3 pods providing read replicas and failover capability
+- **Hash Slots**: 16,384 total slots distributed across 3 masters
+- **Replication Factor**: 1 slave per master
+- **High Availability**: Automatic failover when masters become unavailable
+
+### Slot Distribution
+| Master Node | Pod Name | Hash Slots | Slave Node | Pod Name |
+|-------------|----------|------------|------------|----------|
+| Master 1 | redis-master-0 | 0-5460 (5,461 slots) | Slave 1 | redis-slave-0 |
+| Master 2 | redis-master-1 | 5461-10922 (5,462 slots) | Slave 2 | redis-slave-1 |
+| Master 3 | redis-master-2 | 10923-16383 (5,461 slots) | Slave 3 | redis-slave-2 |
 
 ### Kubernetes Deployment with Redis Operator
 ```yaml
-apiVersion: redis.io/v1beta1
+apiVersion: redis.io/v1beta2
 kind: RedisCluster
 metadata:
   name: rmas-redis-cluster
   namespace: rmas-system
+  labels:
+    app: rmas-redis
+    component: cache-layer
 spec:
-  redisClusterSize: 6
-  masterSize: 3
+  # 6-Pod Configuration: 3 Masters + 3 Slaves
+  clusterSize: 3          # Number of master nodes
+  clusterReplicas: 1      # Number of slaves per master (3 masters × 1 slave = 3 slaves)
+  
+  # Redis Configuration
   redisExporter:
     enabled: true
-    image: quay.io/opstree/redis-exporter:v1.44.0
+    image: oliver006/redis_exporter:v1.55.0
+    
+  # Pod Resource Configuration
   kubernetesConfig:
-    image: quay.io/opstree/redis:v7.0.5
+    image: redis:7.2-alpine
     imagePullPolicy: IfNotPresent
     resources:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 500m
+        memory: 1Gi
       limits:
         cpu: 1000m
         memory: 2Gi
-    redisSecret:
-      name: redis-secret
-      key: password
+        
+  # Persistent Storage for each pod
   storage:
     volumeClaimTemplate:
       spec:
-        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        accessModes:
+          - ReadWriteOnce
         resources:
           requests:
             storage: 20Gi
+            
+  # Redis Configuration
   redisConfig:
-    maxmemory: 1gb
-    maxmemory-policy: allkeys-lru
-    timeout: 300
+    additionalRedisConfig: |
+      # Cluster Configuration
+      cluster-enabled yes
+      cluster-config-file nodes.conf
+      cluster-node-timeout 5000
+      
+      # Memory Configuration  
+      maxmemory 1gb
+      maxmemory-policy allkeys-lru
+      
+      # Persistence Configuration
+      save 900 1
+      save 300 10
+      save 60 10000
+      
+      # Network Configuration
+      timeout 300
+      tcp-keepalive 60
+      
+      # Performance Tuning
+      tcp-backlog 511
+      databases 16
+      
+  # Security Context
+  securityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    
+  # Node Affinity (spread across nodes)
+  nodeSelector: {}
+  
+  # Pod Anti-Affinity (avoid same node placement)
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - rmas-redis
+          topologyKey: kubernetes.io/hostname
+```
+
+## 6-Pod Cluster Verification
+
+### Checking Cluster Status
+After deployment, verify the 6-pod Redis cluster is running correctly:
+
+```bash
+# Check all Redis pods are running
+kubectl get pods -n rmas-system -l app=rmas-redis
+
+# Expected output:
+# NAME                            READY   STATUS    RESTARTS   AGE
+# rmas-redis-cluster-0            1/1     Running   0          5m
+# rmas-redis-cluster-1            1/1     Running   0          5m
+# rmas-redis-cluster-2            1/1     Running   0          5m
+# rmas-redis-cluster-3            1/1     Running   0          4m
+# rmas-redis-cluster-4            1/1     Running   0          4m
+# rmas-redis-cluster-5            1/1     Running   0          4m
+
+# Check cluster topology
+kubectl exec -it rmas-redis-cluster-0 -n rmas-system -- redis-cli cluster nodes
+
+# Expected output shows 3 masters and 3 slaves:
+# abc123... 10.244.1.10:6379@16379 master - 0-5460
+# def456... 10.244.2.11:6379@16379 master - 5461-10922  
+# ghi789... 10.244.3.12:6379@16379 master - 10923-16383
+# jkl012... 10.244.1.13:6379@16379 slave abc123...
+# mno345... 10.244.2.14:6379@16379 slave def456...
+# pqr678... 10.244.3.15:6379@16379 slave ghi789...
+
+# Check cluster info
+kubectl exec -it rmas-redis-cluster-0 -n rmas-system -- redis-cli cluster info
+
+# Expected output:
+# cluster_state:ok
+# cluster_slots_assigned:16384
+# cluster_slots_ok:16384
+# cluster_known_nodes:6
+# cluster_size:3
+```
+
+### Redis Cluster Connection Details
+```bash
+# Service endpoints for applications
+# Master nodes (read/write):
+rmas-redis-cluster-0.rmas-redis-cluster-headless.rmas-system.svc.cluster.local:6379
+rmas-redis-cluster-1.rmas-redis-cluster-headless.rmas-system.svc.cluster.local:6379
+rmas-redis-cluster-2.rmas-redis-cluster-headless.rmas-system.svc.cluster.local:6379
+
+# Slave nodes (read-only):
+rmas-redis-cluster-3.rmas-redis-cluster-headless.rmas-system.svc.cluster.local:6379
+rmas-redis-cluster-4.rmas-redis-cluster-headless.rmas-system.svc.cluster.local:6379
+rmas-redis-cluster-5.rmas-redis-cluster-headless.rmas-system.svc.cluster.local:6379
+
+# Cluster endpoint (automatic routing):
+rmas-redis-cluster.rmas-system.svc.cluster.local:6379
+```
     tcp-keepalive: 60
     databases: 16
     cluster-enabled: "yes"

@@ -1,6 +1,6 @@
-# Multi-Tenancy Strategy with CNPG API Wrapper
+# Multi-Tenancy Strategy with Generic Kubernetes Service Manager
 
-This document outlines the cloud-native multi-tenant architecture strategy for RMAS using a Python Database Service that acts as an API wrapper around the Cloud Native PostgreSQL (CNPG) operator to create, manage, and maintain organization databases on Kubernetes.
+This document outlines the cloud-native multi-tenant architecture strategy for RMAS using a Python Infrastructure Service that acts as a generic API wrapper around Kubernetes operators (CNPG for PostgreSQL and Strimzi for Kafka) to create, manage, and maintain organization infrastructure on Kubernetes.
 
 ## Cloud-Native Multi-Tenancy Architecture
 
@@ -9,87 +9,109 @@ graph TB
     subgraph "Kubernetes Cluster"
         subgraph "Application Layer"
             LaravelApp[Laravel Application<br/>Manager & Org UIs]
-            PythonDBService[Python Database Service<br/>CNPG API Integration]
+            PythonInfraService[Python Infrastructure Service<br/>CNPG & Strimzi API Integration]
             AAPI1[Agent API Instance 1]
             AAPI2[Agent API Instance 2]
         end
         
-        subgraph "CNPG Operator Management"
+        subgraph "Operator Management"
             CNPGOperator[CNPG Operator<br/>PostgreSQL Lifecycle]
+            StrimziOperator[Strimzi Operator<br/>Kafka Lifecycle]
+            RedisOperator[Redis Operator<br/>Redis Cluster Lifecycle]
             MasterCluster[Master PostgreSQL Cluster<br/>rmas_master]
         end
         
-        subgraph "Organization Database Clusters"
+        subgraph "Organization Infrastructure Clusters"
             OrgCluster1[Org 1 PostgreSQL Cluster<br/>rmas_org_acme]
+            OrgKafka1[Org 1 Kafka Cluster<br/>kafka_org_acme]
+            OrgRedis1[Org 1 Redis Cluster<br/>redis_org_acme]
+            
             OrgCluster2[Org 2 PostgreSQL Cluster<br/>rmas_org_tech]
-            OrgCluster3[Org 3 PostgreSQL Cluster<br/>rmas_org_corp]
-            OrgClusterN[Org N PostgreSQL Cluster<br/>rmas_org_xyz]
+            OrgKafka2[Org 2 Kafka Cluster<br/>kafka_org_tech]
+            OrgRedis2[Org 2 Redis Cluster<br/>redis_org_tech]
         end
         
         subgraph "Backup & Recovery"
             BackupStorage[S3/MinIO Backup Storage]
             CNPGBackup[CNPG Backup Management]
+            KafkaBackup[Kafka Topic Backup]
         end
     end
     
-    LaravelApp --> PythonDBService
-    PythonDBService --> CNPGOperator
+    LaravelApp --> PythonInfraService
+    PythonInfraService --> CNPGOperator
+    PythonInfraService --> StrimziOperator
+    PythonInfraService --> RedisOperator
+    
     CNPGOperator --> MasterCluster
     CNPGOperator --> OrgCluster1
     CNPGOperator --> OrgCluster2
-    CNPGOperator --> OrgCluster3
-    CNPGOperator --> OrgClusterN
+    
+    StrimziOperator --> OrgKafka1
+    StrimziOperator --> OrgKafka2
+    
+    RedisOperator --> OrgRedis1
+    RedisOperator --> OrgRedis2
     
     AAPI1 --> OrgCluster1
-    AAPI1 --> OrgCluster3
+    AAPI1 --> OrgKafka1
+    AAPI1 --> OrgRedis1
+    
     AAPI2 --> OrgCluster2
-    AAPI2 --> OrgClusterN
+    AAPI2 --> OrgKafka2
+    AAPI2 --> OrgRedis2
     
     CNPGBackup --> BackupStorage
+    KafkaBackup --> BackupStorage
     CNPGOperator --> CNPGBackup
+    StrimziOperator --> KafkaBackup
 ```
 
-## Python Database Service as CNPG API Wrapper
+## Python Infrastructure Service as Generic Kubernetes Operator Wrapper
 
-The Python Database Service acts as a comprehensive API wrapper around the CNPG operator, providing high-level database management operations through RESTful endpoints. This service handles the complete lifecycle of organization databases including creation, initialization, scaling, backup, and maintenance.
+The Python Infrastructure Service acts as a comprehensive API wrapper around multiple Kubernetes operators (CNPG, Strimzi, Redis Operator), providing high-level infrastructure management operations through RESTful endpoints. This service handles the complete lifecycle of organization infrastructure including PostgreSQL databases, Kafka clusters, Redis clusters, creation, initialization, scaling, backup, and maintenance.
 
-### Database Service API Architecture
+### Infrastructure Service API Architecture
 
 ```mermaid
 graph TB
     subgraph "API Layer"
         LaravelApp[Laravel Application<br/>Manager & Org UIs]
-        FastAPI[Python Database Service<br/>CNPG API Wrapper]
-        RestAPI[RESTful Database API<br/>Port 8080/api/v1/]
+        FastAPI[Python Infrastructure Service<br/>Multi-Operator API Wrapper]
+        RestAPI[RESTful Infrastructure API<br/>Port 8080/api/v1/]
     end
     
-    subgraph "Database Management Layer"
+    subgraph "Infrastructure Management Layer"
         CNPGOperator[CNPG Operator<br/>PostgreSQL Lifecycle]
+        StrimziOperator[Strimzi Operator<br/>Kafka Lifecycle]
+        RedisOperator[Redis Operator<br/>Redis Cluster Lifecycle]
         InitScripts[Database Init Scripts<br/>Default Tables & Data]
         BackupManager[Backup & Recovery<br/>Automated Management]
     end
     
-    subgraph "Organization Database Clusters"
-        OrgCluster1[Org 1 PostgreSQL Cluster<br/>rmas_org_acme]
-        OrgCluster2[Org 2 PostgreSQL Cluster<br/>rmas_org_tech]
-        OrgClusterN[Org N PostgreSQL Cluster<br/>rmas_org_xyz]
+    subgraph "Organization Infrastructure Clusters"
+        OrgPostgres[Org PostgreSQL Clusters<br/>rmas_org_*]
+        OrgKafka[Org Kafka Clusters<br/>kafka_org_*]
+        OrgRedis[Org Redis Clusters<br/>redis_org_*]
     end
     
     LaravelApp -->|HTTP API Calls| FastAPI
     FastAPI -->|Kubernetes API| CNPGOperator
+    FastAPI -->|Kubernetes API| StrimziOperator
+    FastAPI -->|Kubernetes API| RedisOperator
     FastAPI -->|Execute Scripts| InitScripts
     FastAPI -->|Manage Backups| BackupManager
     
-    CNPGOperator -->|Creates/Manages| OrgCluster1
-    CNPGOperator -->|Creates/Manages| OrgCluster2
-    CNPGOperator -->|Creates/Manages| OrgClusterN
+    CNPGOperator -->|Creates/Manages| OrgPostgres
+    StrimziOperator -->|Creates/Manages| OrgKafka
+    RedisOperator -->|Creates/Manages| OrgRedis
     
-    InitScripts -->|Initialize Schema| OrgCluster1
-    InitScripts -->|Initialize Schema| OrgCluster2
-    InitScripts -->|Initialize Schema| OrgClusterN
+    InitScripts -->|Initialize Schema| OrgPostgres
+    BackupManager -->|Backup All| OrgPostgres
+    BackupManager -->|Backup Topics| OrgKafka
 ```
 
-### Database Service API Endpoints
+### Infrastructure Service API Endpoints
 
 #### Organization Database Management
 ```bash
@@ -132,7 +154,77 @@ POST /api/v1/organizations/{org_slug}/database/backup
 DELETE /api/v1/organizations/{org_slug}/database
 ```
 
-### Python Database Service Implementation
+#### Organization Kafka Management
+```bash
+# Create organization Kafka cluster
+POST /api/v1/organizations/{org_slug}/kafka
+Content-Type: application/json
+{
+    "kafka_version": "3.6.0",
+    "brokers": 3,
+    "storage_size": "100Gi",
+    "memory_limit": "4Gi",
+    "cpu_limit": "2000m",
+    "enable_kraft": true,
+    "create_default_topics": true
+}
+
+# Get Kafka cluster status
+GET /api/v1/organizations/{org_slug}/kafka/status
+
+# Scale Kafka brokers
+PUT /api/v1/organizations/{org_slug}/kafka/scale
+{
+    "brokers": 5
+}
+
+# Create Kafka topic
+POST /api/v1/organizations/{org_slug}/kafka/topics
+{
+    "topic_name": "device-events",
+    "partitions": 6,
+    "replication_factor": 3,
+    "cleanup_policy": "delete",
+    "retention_ms": 604800000
+}
+
+# Delete Kafka cluster
+DELETE /api/v1/organizations/{org_slug}/kafka
+```
+
+#### Organization Redis Management
+```bash
+# Create organization Redis cluster (6 pods: 3 masters + 3 slaves)
+POST /api/v1/organizations/{org_slug}/redis
+Content-Type: application/json
+{
+    "redis_version": "7.2",
+    "masters": 3,
+    "slaves_per_master": 1,
+    "memory_limit": "2Gi",
+    "cpu_limit": "1000m",
+    "storage_size": "20Gi",
+    "enable_persistence": true
+}
+
+# Get Redis cluster status
+GET /api/v1/organizations/{org_slug}/redis/status
+
+# Scale Redis cluster
+PUT /api/v1/organizations/{org_slug}/redis/scale
+{
+    "masters": 3,
+    "slaves_per_master": 2
+}
+
+# Get Redis cluster topology
+GET /api/v1/organizations/{org_slug}/redis/topology
+
+# Delete Redis cluster
+DELETE /api/v1/organizations/{org_slug}/redis
+```
+
+### Python Infrastructure Service Implementation
 ```python
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from kubernetes import client, config
@@ -141,17 +233,29 @@ import yaml, logging, asyncio
 import psycopg2
 from pathlib import Path
 
-app = FastAPI(title="RMAS Database Service", version="1.0.0")
+app = FastAPI(title="RMAS Infrastructure Service", version="1.0.0")
 
-class CNPGDatabaseService:
+class KubernetesInfrastructureService:
     def __init__(self):
         config.load_incluster_config()  # Load Kubernetes config
         self.custom_api = client.CustomObjectsApi()
         self.apps_v1 = client.AppsV1Api()
         self.core_v1 = client.CoreV1Api()
+        
+        # Operator configurations
         self.cnpg_group = "postgresql.cnpg.io"
         self.cnpg_version = "v1"
         self.cnpg_plural = "clusters"
+        
+        self.strimzi_group = "kafka.strimzi.io"
+        self.strimzi_version = "v1beta2"
+        self.kafka_plural = "kafkas"
+        self.topic_plural = "kafkatopics"
+        
+        self.redis_group = "redis.redis.opstreelabs.in"
+        self.redis_version = "v1beta2"
+        self.redis_plural = "redisclusters"
+        
         self.init_scripts_path = Path("/app/database/init_scripts")
         
     async def create_organization_database(self, org_slug: str, org_config: dict) -> dict:
@@ -464,32 +568,80 @@ class CNPGDatabaseService:
             logging.error(f"Failed to scale organization database: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Database scaling failed: {str(e)}")
 
-# FastAPI Routes
+# FastAPI Routes - Infrastructure Management
+infra_service = KubernetesInfrastructureService()
+
+# Database Management Routes
 @app.post("/api/v1/organizations/{org_slug}/database")
 async def create_organization_database(org_slug: str, config: dict, background_tasks: BackgroundTasks):
     """Create and initialize organization database"""
-    db_service = CNPGDatabaseService()
-    result = await db_service.create_organization_database(org_slug, config)
+    result = await infra_service.create_organization_database(org_slug, config)
     return result
 
 @app.get("/api/v1/organizations/{org_slug}/database/status")
 async def get_database_status(org_slug: str):
     """Get organization database status"""
-    db_service = CNPGDatabaseService()
     cluster_name = f"rmas-org-{org_slug}"
-    return await db_service.get_cluster_connection_info(cluster_name, "rmas-system")
+    return await infra_service.get_database_connection_info(cluster_name, "rmas-system")
 
 @app.post("/api/v1/organizations/{org_slug}/database/initialize")
 async def initialize_database(org_slug: str, init_config: dict):
     """Execute database initialization scripts"""
-    db_service = CNPGDatabaseService()
-    return await db_service.initialize_organization_database(org_slug)
+    return await infra_service.initialize_organization_database(org_slug)
 
 @app.put("/api/v1/organizations/{org_slug}/database/scale")
 async def scale_database(org_slug: str, scale_config: dict):
     """Scale organization database instances"""
-    db_service = CNPGDatabaseService()
-    return await db_service.scale_organization_database(org_slug, scale_config["instances"])
+    return await infra_service.scale_organization_database(org_slug, scale_config["instances"])
+
+# Kafka Management Routes
+@app.post("/api/v1/organizations/{org_slug}/kafka")
+async def create_organization_kafka(org_slug: str, config: dict):
+    """Create organization Kafka cluster"""
+    result = await infra_service.create_organization_kafka(org_slug, config)
+    return result
+
+@app.get("/api/v1/organizations/{org_slug}/kafka/status")
+async def get_kafka_status(org_slug: str):
+    """Get organization Kafka cluster status"""
+    cluster_name = f"kafka-org-{org_slug}"
+    return await infra_service.get_kafka_connection_info(cluster_name, "rmas-system")
+
+@app.put("/api/v1/organizations/{org_slug}/kafka/scale")
+async def scale_kafka(org_slug: str, scale_config: dict):
+    """Scale organization Kafka brokers"""
+    return await infra_service.scale_kafka_cluster(org_slug, scale_config["brokers"])
+
+@app.post("/api/v1/organizations/{org_slug}/kafka/topics")
+async def create_kafka_topic(org_slug: str, topic_config: dict):
+    """Create Kafka topic"""
+    cluster_name = f"kafka-org-{org_slug}"
+    return await infra_service.create_kafka_topic(org_slug, cluster_name, topic_config)
+
+# Redis Management Routes
+@app.post("/api/v1/organizations/{org_slug}/redis")
+async def create_organization_redis(org_slug: str, config: dict):
+    """Create organization Redis cluster (6 pods: 3 masters + 3 slaves)"""
+    result = await infra_service.create_organization_redis(org_slug, config)
+    return result
+
+@app.get("/api/v1/organizations/{org_slug}/redis/status")
+async def get_redis_status(org_slug: str):
+    """Get organization Redis cluster status"""
+    cluster_name = f"redis-org-{org_slug}"
+    return await infra_service.get_redis_connection_info(cluster_name, "rmas-system")
+
+@app.get("/api/v1/organizations/{org_slug}/redis/topology")
+async def get_redis_topology(org_slug: str):
+    """Get Redis cluster topology information"""
+    cluster_name = f"redis-org-{org_slug}"
+    return await infra_service.get_redis_topology(cluster_name, "rmas-system")
+
+@app.put("/api/v1/organizations/{org_slug}/redis/scale")
+async def scale_redis(org_slug: str, scale_config: dict):
+    """Scale organization Redis cluster"""
+    return await infra_service.scale_redis_cluster(org_slug, scale_config)
+```
 ```
 
 ## Database Initialization Scripts
