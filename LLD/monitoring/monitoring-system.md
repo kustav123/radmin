@@ -74,80 +74,45 @@ graph TB
     AlertManager --> NotificationEngine
 ```
 
-## Data Storage Strategy
+## Data Storage Requirements
 
-### InfluxDB Schema Design
+### Time-Series Database Strategy
+- **InfluxDB**: Primary time-series database for monitoring metrics
+- **Organization Isolation**: Separate databases per organization for data isolation
+- **Retention Policies**: Configurable data retention based on metric importance
+- **High Availability**: Multi-node deployment with replication for critical metrics
 
-#### Database Organization
-```sql
--- Organization-specific databases
-CREATE DATABASE "monitoring_org_1" WITH DURATION 90d REPLICATION 1 SHARD DURATION 1d NAME "default"
-CREATE DATABASE "monitoring_org_2" WITH DURATION 90d REPLICATION 1 SHARD DURATION 1d NAME "default"
-
--- Global system metrics database
-CREATE DATABASE "system_metrics" WITH DURATION 365d REPLICATION 1 SHARD DURATION 7d NAME "default"
+### Required Database Organization
+```text
+InfluxDB Database Structure:
+┌─────────────────────────────────────────────────────────────────┐
+│ ORGANIZATION DATABASES                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ • monitoring_org_{org_id}  → Per-organization metrics          │
+│ • system_metrics           → Cross-organization system metrics │
+│ • alert_metrics           → Alert history and patterns         │
+├─────────────────────────────────────────────────────────────────┤
+│ RETENTION REQUIREMENTS                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ • Device Metrics: 90 days standard, 365 days for critical     │
+│ • Custom Metrics: 90 days with configurable extension         │
+│ • SNMP Metrics: 30 days for network devices                   │
+│ • Alert History: 180 days for compliance and analysis         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### Measurement Schema
+### Required Measurement Categories
+- **Device Metrics**: CPU, memory, disk, network utilization
+- **Custom Metrics**: Device-type specific measurements
+- **SNMP Metrics**: Network device monitoring via SNMP
+- **Application Metrics**: Service performance and availability
+- **Alert Metrics**: Alert triggers, escalations, and resolutions
 
-##### Device Metrics Measurement
-```sql
--- Standard device metrics
--- measurement: device_metrics
--- tags: device_id, organization_id, device_type, device_group, location
--- fields: cpu_usage, memory_usage, disk_usage, network_rx, network_tx
--- time: timestamp
-
-SELECT cpu_usage, memory_usage, disk_usage 
-FROM device_metrics 
-WHERE device_id = 'device_123' 
-AND time >= now() - 1h
-```
-
-##### Custom Metrics Measurement
-```sql
--- Custom device type specific metrics
--- measurement: custom_metrics
--- tags: device_id, device_type, metric_name, metric_category
--- fields: numeric_value, string_value, boolean_value
--- time: timestamp
-
-SELECT numeric_value as cpu_cores
-FROM custom_metrics 
-WHERE device_id = 'device_123' 
-AND metric_name = 'cpu_cores' 
-AND time >= now() - 1h
-```
-
-##### SNMP Metrics Measurement
-```sql
--- SNMP device metrics
--- measurement: snmp_metrics
--- tags: device_ip, organization_id, snmp_version, oid_name
--- fields: oid_value, response_time_ms
--- time: timestamp
-
-SELECT oid_value 
-FROM snmp_metrics 
-WHERE device_ip = '192.168.1.1' 
-AND oid_name = 'sysUpTime' 
-AND time >= now() - 24h
-```
-
-##### Application Metrics Measurement
-```sql
--- Application-level metrics
--- measurement: application_metrics
--- tags: device_id, application_name, metric_type
--- fields: response_time, error_rate, throughput, active_connections
--- time: timestamp
-
-SELECT mean(response_time) as avg_response_time
-FROM application_metrics 
-WHERE application_name = 'web_server' 
-AND time >= now() - 1h 
-GROUP BY time(5m)
-```
+### Data Schema Requirements
+- **Tags**: Device identification, organization, location, device type
+- **Fields**: Numeric measurements, status indicators, configuration values
+- **Time Precision**: Nanosecond precision for accurate time-series analysis
+- **Indexing**: Efficient querying by device, organization, and time ranges
 
 ### InfluxDB Retention Policies
 ```sql

@@ -17,15 +17,15 @@ graph TB
         
         subgraph "Application Services"
             LaravelApp[Laravel Application]
-            PythonDBService[Python Database Service<br/>CNPG API Integration]
-            Backup[Automated Backup<br/>CNPG Managed]
+            PythonDBService["Python Database Service<br/>CNPG API Integration"]
+            Backup["Automated Backup<br/>CNPG Managed"]
         end
     end
     
-    subgraph "Organization Databases"
-        OrgDB1[Organization DB 1<br/>Tenant Isolated]
-        OrgDB2[Organization DB 2<br/>Tenant Isolated]
-        OrgDBN[Organization DB N<br/>Tenant Isolated]
+    subgraph OrgDatabases["Organization Databases"]
+        OrgDB1["Organization DB 1<br/>Tenant Isolated"]
+        OrgDB2["Organization DB 2<br/>Tenant Isolated"]
+        OrgDBN["Organization DB N<br/>Tenant Isolated"]
     end
     
     LaravelApp --> PythonDBService
@@ -40,84 +40,53 @@ graph TB
     PythonDBService -.->|Creates/Manages| OrgDBN
 ```
 
-### Python Database Service Integration
-The Python Database Service provides CNPG operator integration for Laravel since there's no official PHP library for CNPG management.
+### Database Service Integration Requirements
+- **CNPG Operator**: Kubernetes-native PostgreSQL cluster management
+- **Python Service**: API wrapper for CNPG operations (Laravel integration)
+- **Automated Provisioning**: Organization database creation and initialization
+- **Backup Management**: Automated backup and recovery coordination
 
-### Tables Overview
+## Master Database Schema Requirements
 
-```mermaid
-erDiagram
-    managers ||--o{ manager_organization_access : has
-    organizations ||--o{ manager_organization_access : grants_access_to
-    organizations ||--o{ organization_databases : has
-    device_types ||--o{ organization_device_types : synced_to
-    organizations ||--o{ organization_device_types : contains
-    
-    managers {
-        uuid id PK
-        string username UK
-        string email UK
-        string password_hash
-        string first_name
-        string last_name
-        boolean is_super_admin
-        json permissions
-        timestamp email_verified_at
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    organizations {
-        uuid id PK
-        string name
-        string slug UK
-        string database_name UK
-        string domain
-        json settings
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    manager_organization_access {
-        uuid id PK
-        uuid manager_id FK
-        uuid organization_id FK
-        json permissions
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    device_types {
-        uuid id PK
-        string name UK
-        string slug UK
-        json configuration
-        json default_settings
-        string icon
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    organization_databases {
-        uuid id PK
-        uuid organization_id FK
-        string database_name UK
-        string connection_string
-        string status
-        timestamp last_backup
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    organization_device_types {
-        uuid id PK
-        uuid organization_id FK
-        uuid device_type_id FK
-        boolean is_enabled
-        json custom_settings
-        timestamp last_synced
+### Core Entity Requirements
+```text
+Master Database Core Entities:
+┌─────────────────────────────────────────────────────────────────┐
+│ MANAGERS                                                        │
+├─────────────────────────────────────────────────────────────────┤
+│ • Unique ID, username, email                                   │
+│ • Secure password storage (hashed)                             │
+│ • Role-based permissions (super admin flag)                    │
+│ • Profile information (name, contact details)                  │
+├─────────────────────────────────────────────────────────────────┤
+│ ORGANIZATIONS                                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ • Unique ID, name, slug (URL-friendly identifier)              │
+│ • Database connection info                                      │
+│ • Organization settings and configurations                     │
+│ • Active/inactive status management                            │
+├─────────────────────────────────────────────────────────────────┤
+│ DEVICE TYPES (Global Templates)                                │
+├─────────────────────────────────────────────────────────────────┤
+│ • Device type definitions and configurations                   │
+│ • Custom field specifications                                  │
+│ • Default settings and monitoring parameters                   │
+│ • Icon/visual representation                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ RELATIONSHIPS                                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ • Manager-Organization Access (permission mapping)             │
+│ • Organization-Database Tracking                               │
+│ • Device Type-Organization Sync Status                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Data Integrity Requirements
+- **UUID Primary Keys**: Globally unique identifiers for all entities
+- **Unique Constraints**: Username, email, organization slug uniqueness
+- **Foreign Key Integrity**: Proper relationship constraints
+- **Audit Trails**: Created/updated timestamps for all entities
+- **Soft Deletes**: Logical deletion for historical data preservation
         timestamp created_at
         timestamp updated_at
     }

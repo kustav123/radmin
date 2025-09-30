@@ -64,100 +64,56 @@ graph TB
     Broker1 --> AnalyticsEngine
 ```
 
-## Topic Architecture
+## Topic Architecture Requirements
 
-### Topic Overview
-| Topic Name | Partitions | Replication | Retention | Purpose |
-|------------|------------|-------------|-----------|---------|
-| `agent-responses` | 12 | 3 | 7 days | Agent heartbeats and system info |
-| `monitoring-data` | 24 | 3 | 30 days | Device metrics and custom measurements |
-| `audit-logs` | 6 | 3 | 90 days | System audit events |
-| `alert-events` | 8 | 3 | 30 days | Alert triggers and notifications |
-| `snmp-data` | 8 | 3 | 14 days | SNMP polling results and traps |
-| `job-events` | 4 | 3 | 14 days | Job execution events |
-| `device-events` | 6 | 3 | 30 days | Device lifecycle events |
+### Standard Topic Specification
+| Topic Purpose | Partitions | Replication | Retention | Organization Isolation |
+|---------------|------------|-------------|-----------|----------------------|
+| Device Events | 6 | 3 | 30 days | Per-org topics: `{org_id}-device-events` |
+| Monitoring Data | 12 | 3 | 30 days | Per-org topics: `{org_id}-monitoring-data` |
+| Alert Events | 8 | 3 | 30 days | Per-org topics: `{org_id}-alert-events` |
+| Audit Logs | 6 | 3 | 90 days | Per-org topics: `{org_id}-audit-logs` |
+| Job Results | 4 | 3 | 14 days | Per-org topics: `{org_id}-job-results` |
+| SNMP Data | 8 | 3 | 14 days | Per-org topics: `{org_id}-snmp-data` |
 
-### Partitioning Strategy
-- **agent-responses**: Partitioned by `device_id` hash for ordered processing
-- **monitoring-data**: Partitioned by `org_id` for organization isolation
-- **audit-logs**: Partitioned by `org_id` for compliance and isolation
-- **alert-events**: Partitioned by `alert_type` for parallel processing
-- **snmp-data**: Partitioned by `network_segment` for geographic distribution
+### Partitioning Strategy Requirements
+- **Device Events**: Partition by `device_id` hash for ordered processing per device
+- **Monitoring Data**: Partition by `device_type` for parallel processing of similar devices
+- **Alert Events**: Partition by `alert_severity` for priority-based processing
+- **Audit Logs**: Partition by `user_id` hash for user activity correlation
+- **Job Results**: Partition by `job_template_id` for template-based processing
 
-## Message Schemas
+## Message Schema Requirements
 
-### 1. Agent Responses Topic (`agent-responses`)
-
-#### Heartbeat Message
-```json
-{
-  "event_type": "heartbeat",
-  "timestamp": "2025-01-16T12:00:00.000Z",
-  "device_id": "550e8400-e29b-41d4-a716-446655440030",
-  "organization_id": "550e8400-e29b-41d4-a716-446655440001",
-  "agent_version": "1.2.3",
-  "data": {
-    "status": "online",
-    "metrics": {
-      "cpu": {
-        "usage_percent": 25.5,
-        "load_average": [1.2, 1.5, 1.8],
-        "process_count": 156
-      },
-      "memory": {
-        "total_bytes": 17179869184,
-        "used_bytes": 8858370048,
-        "usage_percent": 51.5,
-        "available_bytes": 8321499136
-      },
-      "disk": {
-        "drives": [
-          {
-            "path": "C:",
-            "total_bytes": 536870912000,
-            "used_bytes": 268435456000,
-            "usage_percent": 50.0,
-            "free_bytes": 268435456000
-          }
-        ]
-      },
-      "network": {
-        "interfaces": [
-          {
-            "name": "Ethernet",
-            "bytes_sent": 1048576000,
-            "bytes_received": 2097152000,
-            "packets_sent": 1000000,
-            "packets_received": 1500000,
-            "errors": 0
-          }
-        ]
-      }
-    },
-    "running_jobs": [
-      {
-        "execution_id": "550e8400-e29b-41d4-a716-446655440050",
-        "status": "running",
-        "progress": 75
-      }
-    ],
-    "custom_metrics": {
-      "cpu_cores": 8,
-      "ram_gb": 16,
-      "disk_io_ops": 1250,
-      "network_latency_ms": 15,
-      "application_response_time": 120
-    }
-  },
-  "headers": {
-    "correlation_id": "req_12345",
-    "source": "agent-api",
-    "content_encoding": "gzip"
-  }
-}
+### Required Message Structure
+```text
+Standard Kafka Message Format:
+┌─────────────────────────────────────────────────────────────────┐
+│ MESSAGE HEADERS                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│ • organization_id    → Organization identifier                  │
+│ • device_id         → Source device identifier                  │
+│ • event_type        → Message type classification               │
+│ • timestamp         → Event occurrence time (ISO 8601)          │
+│ • correlation_id    → Request tracking identifier               │
+│ • content_encoding  → Compression method (gzip recommended)     │
+├─────────────────────────────────────────────────────────────────┤
+│ MESSAGE PAYLOAD                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│ • Structured JSON with event-specific data                     │
+│ • Standardized field naming conventions                        │
+│ • Versioned schema for backward compatibility                  │
+│ • Compressed payloads for large monitoring data                │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### System Information Message
+### Event Type Categories
+- **Device Lifecycle**: Registration, deregistration, status changes
+- **Monitoring Metrics**: CPU, memory, disk, network, custom metrics
+- **Alert Events**: Threshold breaches, system warnings, critical alerts
+- **Job Execution**: Start, progress, completion, failure events
+- **Audit Events**: User actions, system changes, security events
+- **SNMP Events**: Trap notifications, polling results, device discoveries
 ```json
 {
   "event_type": "system_info",

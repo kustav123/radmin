@@ -17,107 +17,66 @@ The Admin API provides RESTful endpoints for the manager and organization web in
 ```json
 {
     "success": true,
-    "data": {
-        // Response data
-    },
-    "message": "Operation completed successfully",
-    "errors": null,
-    "meta": {
-        "page": 1,
-        "per_page": 20,
-        "total": 100,
-        "last_page": 5
-    }
-}
+## API Design Requirements
+
+### Standard Response Format
+- **Consistent Structure**: All API responses follow standardized JSON format
+- **Status Indication**: Clear success/error indication with appropriate HTTP codes
+- **Error Handling**: Comprehensive error messages with validation details
+- **Pagination**: Standardized pagination for list endpoints
+- **Meta Information**: Additional context data (totals, pages, etc.)
+
+### Required Response Schema
+```text
+Standard API Response Format:
+┌─────────────────────────────────────────────────────────────────┐
+│ {                                                               │
+│   "success": boolean,                                           │
+│   "data": object | array,                                       │
+│   "message": string,                                            │
+│   "errors": object | null,                                      │
+│   "meta": {                                                     │
+│     "page": number,                                             │
+│     "per_page": number,                                         │
+│     "total": number,                                            │
+│     "last_page": number                                         │
+│   }                                                             │
+│ }                                                               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Manager API Endpoints
+## Manager API Requirements
 
-### Authentication
+### Authentication Requirements
+- **Login/Logout**: Standard authentication flow with JWT tokens
+- **Session Management**: Secure session handling with configurable expiration
+- **Multi-Factor**: Support for MFA (future requirement)
+- **Permission Checking**: Role-based access control integration
 
-#### POST /manager/auth/login
-Login manager user.
+### Organization Management Requirements
+- **CRUD Operations**: Complete organization lifecycle management
+- **Multi-Tenant**: Organization isolation and data separation
+- **Bulk Operations**: Efficient handling of multiple organizations
+- **Status Management**: Active/inactive organization states
 
-**Request:**
-```json
-{
-    "username": "admin",
-    "password": "password123",
-    "remember": true
-}
+#### Required Organization Endpoints
+```text
+Organization Management API Requirements:
+┌─────────────────────────────────────────────────────────────────┐
+│ GET    /manager/organizations           → List all organizations │
+│ POST   /manager/organizations           → Create new organization│
+│ GET    /manager/organizations/{id}      → Get organization detail│
+│ PUT    /manager/organizations/{id}      → Update organization    │
+│ DELETE /manager/organizations/{id}      → Delete organization    │
+│ POST   /manager/organizations/{id}/sync → Sync organization data │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Response:**
-```json
-{
-    "success": true,
-    "data": {
-        "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-        "manager": {
-            "id": "550e8400-e29b-41d4-a716-446655440000",
-            "username": "admin",
-            "email": "admin@company.com",
-            "first_name": "System",
-            "last_name": "Administrator",
-            "is_super_admin": true,
-            "permissions": {...}
-        }
-    },
-    "message": "Login successful"
-}
-```
-
-#### POST /manager/auth/logout
-Logout current manager.
-
-#### GET /manager/auth/me
-Get current manager details.
-
-### Organization Management
-
-#### GET /manager/organizations
-List all organizations.
-
-**Query Parameters:**
-- `page` (int): Page number
-- `per_page` (int): Items per page (max 100)
-- `search` (string): Search in name
-- `status` (string): active, inactive, all
-- `sort` (string): name, created_at, updated_at
-- `order` (string): asc, desc
-
-**Response:**
-```json
-{
-    "success": true,
-    "data": [
-        {
-            "id": "550e8400-e29b-41d4-a716-446655440001",
-            "name": "Acme Corporation",
-            "slug": "acme-corp",
-            "database_name": "rmas_org_acme_corp",
-            "domain": "acme.com",
-            "is_active": true,
-            "device_count": 150,
-            "user_count": 25,
-            "last_activity": "2025-01-15T14:30:00Z",
-            "created_at": "2025-01-01T00:00:00Z",
-            "updated_at": "2025-01-15T14:30:00Z"
-        }
-    ],
-    "meta": {
-        "page": 1,
-        "per_page": 20,
-        "total": 5,
-        "last_page": 1
-    }
-}
-```
-
-#### POST /manager/organizations
-Create new organization.
-
-**Request:**
+### Device Type Management Requirements
+- **Global Templates**: System-wide device type definitions
+- **Custom Fields**: Configurable fields per device type
+- **Organization Sync**: Push device types to specific organizations
+- **Version Control**: Track changes to device type templates
 ```json
 {
     "name": "New Company Ltd",

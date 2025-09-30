@@ -267,206 +267,64 @@ GET /api/v1/infrastructure/metrics
 GET /api/v1/organizations/{org_slug}/infrastructure/usage
 ```
 
-### Python Infrastructure Service Implementation
-```python
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from kubernetes import client, config
-from datetime import datetime
-import yaml, logging, asyncio
-import psycopg2
-from pathlib import Path
+### Infrastructure Service Requirements
 
-app = FastAPI(title="RMAS Infrastructure Service", version="1.0.0")
+#### Core Requirements
+- **Python Infrastructure Service**: REST API wrapper for Kubernetes operators
+- **Multi-Operator Management**: CNPG (PostgreSQL), Strimzi (Kafka), Redis Operator
+- **Organization Provisioning**: Automated database cluster creation per organization
+- **Shared Services**: Kafka and Redis clusters shared across organizations with logical isolation
+- **Initialization**: Automated schema and data setup for new organizations
 
-class KubernetesInfrastructureService:
-    def __init__(self):
-        config.load_incluster_config()  # Load Kubernetes config
-        self.custom_api = client.CustomObjectsApi()
-        self.apps_v1 = client.AppsV1Api()
-        self.core_v1 = client.CoreV1Api()
-        
-        # Operator configurations
-        self.cnpg_group = "postgresql.cnpg.io"
-        self.cnpg_version = "v1"
-        self.cnpg_plural = "clusters"
-        
-        self.strimzi_group = "kafka.strimzi.io"
-        self.strimzi_version = "v1beta2"
-        self.kafka_plural = "kafkas"
-        self.topic_plural = "kafkatopics"
-        
-        self.redis_group = "redis.redis.opstreelabs.in"
-        self.redis_version = "v1beta2"
-        self.redis_plural = "redisclusters"
-        
-        self.init_scripts_path = Path("/app/database/init_scripts")
-        
-    async def create_organization_database(self, org_slug: str, org_config: dict) -> dict:
-        """Create a new PostgreSQL cluster for an organization with initialization"""
-        
-        cluster_name = f"rmas-org-{org_slug}"
-        namespace = "rmas-system"
-        database_name = f"rmas_org_{org_slug}"
-        username = f"rmas_org_{org_slug}_user"
-        
-        # Create database credentials secret first
-        await self.create_database_credentials(cluster_name, namespace, username, database_name)
-        
-        # CNPG Cluster definition with initialization
-        cluster_spec = {
-            "apiVersion": f"{self.cnpg_group}/{self.cnpg_version}",
-            "kind": "Cluster",
-            "metadata": {
-                "name": cluster_name,
-                "namespace": namespace,
-                "labels": {
-                    "app": "rmas",
-                    "component": "database",
-                    "organization": org_slug,
-                    "managed-by": "rmas-db-service"
-                }
-            },
-            "spec": {
-                "instances": org_config.get("db_instances", 3),
-                "primaryUpdateStrategy": "unsupervised",
-                "postgresql": {
-                    "parameters": {
-                        "max_connections": "200",
-                        "shared_buffers": "256MB",
-                        "effective_cache_size": "1GB",
-                        "maintenance_work_mem": "64MB",
-                        "checkpoint_completion_target": "0.9",
-                        "wal_buffers": "16MB",
-                        "default_statistics_target": "100",
-                        "random_page_cost": "1.1",
-                        "effective_io_concurrency": "200"
-                    }
-                },
-                "bootstrap": {
-                    "initdb": {
-                        "database": database_name,
-                        "owner": username,
-                        "secret": {
-                            "name": f"{cluster_name}-credentials"
-                        },
-                        "postInitApplicationSQL": [
-                            # Create extensions
-                            "CREATE EXTENSION IF NOT EXISTS uuid-ossp;",
-                            "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;",
-                            "CREATE EXTENSION IF NOT EXISTS pg_trgm;",
-                            # Set up initial permissions
-                            f"GRANT ALL PRIVILEGES ON DATABASE {database_name} TO {username};",
-                            f"ALTER DATABASE {database_name} OWNER TO {username};"
-                        ]
-                    }
-                },
-                "storage": {
-                    "size": org_config.get("storage_size", "50Gi"),
-                    "storageClass": org_config.get("storage_class", "fast-ssd")
-                },
-                "resources": {
-                    "requests": {
-                        "memory": org_config.get("memory_request", "1Gi"),
-                        "cpu": org_config.get("cpu_request", "500m")
-                    },
-                    "limits": {
-                        "memory": org_config.get("memory_limit", "2Gi"),
-                        "cpu": org_config.get("cpu_limit", "1000m")
-                    }
-                },
-                "monitoring": {
-                    "enabled": True,
-                    "prometheusRule": {
-                        "enabled": True
-                    }
-                },
-                "backup": {
-                    "retentionPolicy": "30d",
-                    "target": "prefer-standby",
-                    "schedule": "0 2 * * *",  # Daily at 2 AM
-                    "s3": {
-                        "bucket": org_config.get("backup_bucket", "rmas-backups"),
-                        "path": f"/organizations/{org_slug}",
-                        "accessKeyId": {
-                            "name": "backup-credentials",
-                            "key": "ACCESS_KEY_ID"
-                        },
-                        "secretAccessKey": {
-                            "name": "backup-credentials", 
-                            "key": "SECRET_ACCESS_KEY"
-                        },
-                        "endpoint": org_config.get("s3_endpoint", "s3.amazonaws.com"),
-                        "region": org_config.get("s3_region", "us-east-1")
-                    }
-                }
-            }
-        }
-        
-        try:
-            # Create the CNPG cluster
-            response = self.custom_api.create_namespaced_custom_object(
-                group=self.cnpg_group,
-                version=self.cnpg_version,
-                namespace=namespace,
-                plural=self.cnpg_plural,
-                body=cluster_spec
-            )
-            
-            # Wait for cluster to be ready
-            await self.wait_for_cluster_ready(cluster_name, namespace)
-            
-            # Execute initialization scripts
-            if org_config.get("init_with_defaults", True):
-                await self.initialize_organization_database(org_slug)
-            
-            # Get connection details
-            connection_info = await self.get_cluster_connection_info(cluster_name, namespace)
-            
-            return {
-                "status": "success",
-                "cluster_name": cluster_name,
-                "database_name": database_name,
-                "connection_info": connection_info,
-                "initialized": org_config.get("init_with_defaults", True),
-                "created_at": datetime.utcnow().isoformat()
-            }
-            
-        except Exception as e:
-            logging.error(f"Failed to create organization database: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Database creation failed: {str(e)}")
-    
-    async def create_database_credentials(self, cluster_name: str, namespace: str, username: str, database: str):
-        """Create Kubernetes secret with database credentials"""
-        import secrets
-        import string
-        
-        # Generate secure password
-        password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
-        
-        secret = {
-            "apiVersion": "v1",
-            "kind": "Secret",
-            "metadata": {
-                "name": f"{cluster_name}-credentials",
-                "namespace": namespace,
-                "labels": {
-                    "app": "rmas",
-                    "component": "database-credentials",
-                    "cluster": cluster_name
-                }
-            },
-            "type": "Opaque",
-            "stringData": {
-                "username": username,
-                "password": password,
-                "database": database
-            }
-        }
-        
-        self.core_v1.create_namespaced_secret(namespace=namespace, body=secret)
-    
-    async def initialize_organization_database(self, org_slug: str) -> dict:
-        """Execute initialization scripts to create default tables and data"""
+#### Service Capabilities
+```text
+Infrastructure Service API Requirements:
+┌─────────────────────────────────────────────────────────────────┐
+│                     Infrastructure Service                      │
+├─────────────────────────────────────────────────────────────────┤
+│ • Organization Database Creation & Management                   │
+│ • Kafka Topic Creation (Per-Organization)                      │
+│ • Redis Cluster Monitoring & Scaling                           │
+│ • Automated Schema Initialization                              │
+│ • Backup & Recovery Coordination                               │
+│ • Health Monitoring & Status Reporting                         │
+│ • Resource Scaling & Optimization                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### API Endpoint Requirements
+- **Database Management**: Organization database lifecycle (create, scale, monitor)
+- **Topic Management**: Kafka topic creation and management per organization  
+- **Cache Management**: Redis cluster status and organization key management
+- **Health Endpoints**: Status monitoring for all infrastructure components
+### Database Initialization Requirements
+
+#### Schema Initialization Process
+- **Automated Setup**: New organization databases automatically initialized with standard RMAS schema
+- **Script Execution**: Standardized SQL scripts executed in specific order during database creation
+- **Default Data**: Essential lookup data and initial configurations inserted automatically
+- **Organization Isolation**: Each organization gets complete, isolated database instance
+
+#### Required Initialization Scripts
+```text
+Database Initialization Sequence:
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Base Tables Creation (core entities)                        │
+│ 2. Device Tables (device types, status, relationships)         │  
+│ 3. User Tables (authentication, roles, permissions)            │
+│ 4. Job Tables (templates, schedules, execution logs)           │
+│ 5. Audit Tables (activity tracking, change logs)               │
+│ 6. Default Data Insertion (lookups, system configs)            │
+│ 7. Index Creation (performance optimization)                   │
+│ 8. Trigger Setup (automated behaviors)                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Connection Management Requirements
+- **CNPG Integration**: Use CNPG operator APIs for connection info retrieval
+- **Credential Management**: Kubernetes secrets for secure database authentication
+- **Connection Pooling**: Efficient database connection handling
+- **Health Monitoring**: Database cluster status and performance tracking
         
         cluster_name = f"rmas-org-{org_slug}"
         namespace = "rmas-system"
@@ -619,309 +477,74 @@ class KubernetesInfrastructureService:
         failed_topics = []
         
         for topic_config in topics_config:
-            topic_name = f"{org_id}-{topic_config['name']}"
-            
-            topic_spec = {
-                "apiVersion": f"{self.strimzi_group}/{self.strimzi_version}",
-                "kind": "KafkaTopic",
-                "metadata": {
-                    "name": topic_name,
-                    "namespace": namespace,
-                    "labels": {
-                        "strimzi.io/cluster": "rmas-kafka-shared",
-                        "organization": org_id,
-                        "topic-type": topic_config['name'],
-                        "managed-by": "rmas-infra-service"
-                    }
-                },
-                "spec": {
-                    "topicName": topic_name,
-                    "partitions": topic_config.get("partitions", 6),
-                    "replicas": topic_config.get("replication_factor", 3),
-                    "config": {
-                        "cleanup.policy": topic_config.get("cleanup_policy", "delete"),
-                        "retention.ms": str(topic_config.get("retention_ms", 604800000)),
-                        "min.insync.replicas": "2",
-                        "compression.type": "lz4"
-                    }
-                }
-            }
-            
-            try:
-                response = self.custom_api.create_namespaced_custom_object(
-                    group=self.strimzi_group,
-                    version=self.strimzi_version,
-                    namespace=namespace,
-                    plural=self.topic_plural,
-                    body=topic_spec
-                )
-                
-                created_topics.append({
-                    "name": topic_name,
-                    "partitions": topic_config.get("partitions", 6),
-                    "replication_factor": topic_config.get("replication_factor", 3),
-                    "status": "created"
-                })
-                
-            except Exception as e:
-                logging.error(f"Failed to create topic {topic_name}: {str(e)}")
-                failed_topics.append({
-                    "name": topic_name,
-                    "error": str(e)
-                })
-        
-        return {
-            "status": "completed",
-            "organization": org_id,
-            "created_topics": created_topics,
-            "failed_topics": failed_topics,
-            "total_requested": len(topics_config),
-            "total_created": len(created_topics),
-            "created_at": datetime.utcnow().isoformat()
-        }
-    
-    async def create_organization_topic(self, org_id: str, topic_config: dict) -> dict:
-        """Create a single organization-specific topic"""
-        
-        topic_name = f"{org_id}-{topic_config['topic_name']}"
-        namespace = "rmas-system"
-        
-        topic_spec = {
-            "apiVersion": f"{self.strimzi_group}/{self.strimzi_version}",
-            "kind": "KafkaTopic",
-            "metadata": {
-                "name": topic_name,
-                "namespace": namespace,
-                "labels": {
-                    "strimzi.io/cluster": "rmas-kafka-shared",
-                    "organization": org_id,
-                    "topic-type": topic_config['topic_name'],
-                    "managed-by": "rmas-infra-service"
-                }
-            },
-            "spec": {
-                "topicName": topic_name,
-                "partitions": topic_config.get("partitions", 6),
-                "replicas": topic_config.get("replication_factor", 3),
-                "config": {
-                    "cleanup.policy": topic_config.get("cleanup_policy", "delete"),
-                    "retention.ms": str(topic_config.get("retention_ms", 604800000)),
-                    "min.insync.replicas": "2",
-                    "compression.type": "lz4"
-                }
-            }
-        }
-        
-        try:
-            response = self.custom_api.create_namespaced_custom_object(
-                group=self.strimzi_group,
-                version=self.strimzi_version,
-                namespace=namespace,
-                plural=self.topic_plural,
-                body=topic_spec
-            )
-            
-            return {
-                "status": "success",
-                "topic_name": topic_name,
-                "organization": org_id,
-                "partitions": topic_config.get("partitions", 6),
-                "replication_factor": topic_config.get("replication_factor", 3),
-                "created_at": datetime.utcnow().isoformat()
-            }
-            
-        except Exception as e:
-            logging.error(f"Failed to create organization topic: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Topic creation failed: {str(e)}")
-    
-    async def list_organization_topics(self, org_id: str) -> dict:
-        """List all topics for an organization"""
-        
-        namespace = "rmas-system"
-        
-        try:
-            topics = self.custom_api.list_namespaced_custom_object(
-                group=self.strimzi_group,
-                version=self.strimzi_version,
-                namespace=namespace,
-                plural=self.topic_plural,
-                label_selector=f"organization={org_id}"
-            )
-            
-            org_topics = []
-            for topic in topics.get("items", []):
-                topic_name = topic["spec"]["topicName"]
-                org_topics.append({
-                    "name": topic_name,
-                    "partitions": topic["spec"]["partitions"],
-                    "replicas": topic["spec"]["replicas"],
-                    "config": topic["spec"].get("config", {}),
-                    "status": topic.get("status", {}).get("conditions", [])
-                })
-            
-            return {
-                "organization": org_id,
-                "topics": org_topics,
-                "total_topics": len(org_topics)
-            }
-            
-        except Exception as e:
-            logging.error(f"Failed to list organization topics: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Topic listing failed: {str(e)}")
-    
-    async def delete_organization_topics(self, org_id: str) -> dict:
-        """Delete all topics for an organization"""
-        
-        namespace = "rmas-system"
-        
-        try:
-            # First list all topics for the organization
-            topics = self.custom_api.list_namespaced_custom_object(
-                group=self.strimzi_group,
-                version=self.strimzi_version,
-                namespace=namespace,
-                plural=self.topic_plural,
-                label_selector=f"organization={org_id}"
-            )
-            
-            deleted_topics = []
-            failed_deletions = []
-            
-            for topic in topics.get("items", []):
-                topic_name = topic["metadata"]["name"]
-                try:
-                    self.custom_api.delete_namespaced_custom_object(
-                        group=self.strimzi_group,
-                        version=self.strimzi_version,
-                        namespace=namespace,
-                        plural=self.topic_plural,
-                        name=topic_name
-                    )
-                    deleted_topics.append(topic_name)
-                except Exception as e:
-                    failed_deletions.append({
-                        "topic": topic_name,
-                        "error": str(e)
-                    })
-            
-            return {
-                "status": "completed",
-                "organization": org_id,
-                "deleted_topics": deleted_topics,
-                "failed_deletions": failed_deletions,
-                "total_deleted": len(deleted_topics),
-                "deleted_at": datetime.utcnow().isoformat()
-            }
-            
-        except Exception as e:
-            logging.error(f"Failed to delete organization topics: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Topic deletion failed: {str(e)}")
+### Kafka Topic Management Requirements
 
-# FastAPI Routes - Infrastructure Management
-infra_service = KubernetesInfrastructureService()
+#### Per-Organization Topic Strategy
+- **Dedicated Topics**: Each organization gets separate Kafka topics for complete data isolation
+- **Standard Topic Set**: Automatically create standard topics when organization is provisioned
+- **Naming Convention**: Use `{org_id}-{topic_type}` format for clear organization identification
+- **Configuration**: Optimized settings for performance (partitions: 6, replication: 3)
 
-# Database Management Routes
-@app.post("/api/v1/organizations/{org_slug}/database")
-async def create_organization_database(org_slug: str, config: dict, background_tasks: BackgroundTasks):
-    """Create and initialize organization database"""
-    result = await infra_service.create_organization_database(org_slug, config)
-    return result
-
-@app.get("/api/v1/organizations/{org_slug}/database/status")
-async def get_database_status(org_slug: str):
-    """Get organization database status"""
-    cluster_name = f"rmas-org-{org_slug}"
-    return await infra_service.get_database_connection_info(cluster_name, "rmas-system")
-
-@app.post("/api/v1/organizations/{org_slug}/database/initialize")
-async def initialize_database(org_slug: str, init_config: dict):
-    """Execute database initialization scripts"""
-    return await infra_service.initialize_organization_database(org_slug)
-
-@app.put("/api/v1/organizations/{org_slug}/database/scale")
-async def scale_database(org_slug: str, scale_config: dict):
-    """Scale organization database instances"""
-    return await infra_service.scale_organization_database(org_slug, scale_config["instances"])
-
-# Shared Kafka Management Routes
-@app.get("/api/v1/infrastructure/kafka/status")
-async def get_shared_kafka_status():
-    """Get shared Kafka cluster status"""
-    return await infra_service.get_shared_kafka_status()
-
-@app.post("/api/v1/infrastructure/kafka/topics")
-async def create_organization_topic(topic_request: dict):
-    """Create organization-specific topic"""
-    org_id = topic_request.get("org_id")
-    topic_config = {k: v for k, v in topic_request.items() if k != "org_id"}
-    return await infra_service.create_organization_topic(org_id, topic_config)
-
-@app.post("/api/v1/organizations/{org_id}/kafka/topics/bulk")
-async def create_organization_topics_bulk(org_id: str, topics_config: list):
-    """Create standard topics for an organization"""
-    return await infra_service.create_organization_topics(org_id, topics_config)
-
-@app.get("/api/v1/organizations/{org_id}/kafka/topics")
-async def list_organization_topics(org_id: str):
-    """List topics for organization"""
-    return await infra_service.list_organization_topics(org_id)
-
-@app.delete("/api/v1/organizations/{org_id}/kafka/topics")
-async def delete_organization_topics(org_id: str):
-    """Delete all topics for organization"""
-    return await infra_service.delete_organization_topics(org_id)
-
-@app.put("/api/v1/infrastructure/kafka/scale")
-async def scale_shared_kafka(scale_config: dict):
-    """Scale shared Kafka brokers (affects all organizations)"""
-    return await infra_service.scale_shared_kafka_cluster(scale_config["brokers"])
-
-@app.get("/api/v1/infrastructure/kafka/consumer-groups")
-async def get_consumer_groups(org_id: str):
-    """Get Kafka consumer group info for organization"""
-    return await infra_service.get_organization_consumer_groups(org_id)
-
-# Shared Redis Management Routes  
-@app.get("/api/v1/infrastructure/redis/status")
-async def get_shared_redis_status():
-    """Get shared Redis cluster status"""
-    return await infra_service.get_shared_redis_status()
-
-@app.get("/api/v1/infrastructure/redis/topology")
-async def get_redis_topology():
-    """Get Redis cluster topology information"""
-    return await infra_service.get_shared_redis_topology()
-
-@app.put("/api/v1/infrastructure/redis/scale")
-async def scale_shared_redis(scale_config: dict):
-    """Scale shared Redis cluster (affects all organizations)"""
-    return await infra_service.scale_shared_redis_cluster(scale_config)
-
-@app.get("/api/v1/infrastructure/redis/stats")
-async def get_redis_stats(org_id: str):
-    """Get Redis key statistics for organization"""
-    return await infra_service.get_organization_redis_stats(org_id)
-
-@app.delete("/api/v1/infrastructure/redis/keys")
-async def flush_organization_keys(org_id: str):
-    """Flush organization-specific keys (emergency operation)"""
-    return await infra_service.flush_organization_redis_keys(org_id)
+#### Required Topic Types Per Organization
+```text
+Standard Organization Topic Set:
+┌─────────────────────────────────────────────────────────────────┐
+│ • {org_id}-device-events      → Device status and metrics       │
+│ • {org_id}-job-results        → Job execution results           │
+│ • {org_id}-alerts             → Alert notifications             │
+│ • {org_id}-audit-logs         → User activity tracking          │
+│ • {org_id}-monitoring-data    → Custom monitoring metrics       │
+│ • {org_id}-snmp-traps         → SNMP trap events               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Shared Service Multi-Tenancy Patterns
+#### Topic Management Requirements
+- **Bulk Creation**: Create all standard topics for new organization in single operation
+- **Individual Management**: Add/remove specific topics as needed
+- **Lifecycle Management**: Automatic cleanup when organization is deleted
+- **Monitoring**: Track topic health, usage, and performance metrics
 
-### Kafka Multi-Tenancy with Per-Organization Topics
+### Infrastructure API Requirements
 
-#### Topic Creation Strategy
-Each organization gets dedicated topics created automatically when the organization is provisioned. Topics are created with standardized naming and optimal configurations.
+# Database Management Routes
+#### Required API Endpoints
 
-```bash
-# Standard topics created per organization:
-{org_id}-device-events          # Device telemetry and events
-{org_id}-alert-notifications    # System alerts and notifications  
-{org_id}-job-execution-results  # Job execution status and results
-{org_id}-audit-logs            # Audit trail events
-{org_id}-monitoring-metrics    # Custom monitoring metrics
+```text
+Infrastructure Service API Specification:
+┌─────────────────────────────────────────────────────────────────┐
+│ DATABASE MANAGEMENT                                             │
+├─────────────────────────────────────────────────────────────────┤
+│ POST   /api/v1/organizations/{org_slug}/database               │
+│ GET    /api/v1/organizations/{org_slug}/database/status        │
+│ POST   /api/v1/organizations/{org_slug}/database/initialize    │
+│ PUT    /api/v1/organizations/{org_slug}/database/scale         │
+├─────────────────────────────────────────────────────────────────┤
+│ KAFKA TOPIC MANAGEMENT                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ GET    /api/v1/infrastructure/kafka/status                     │
+│ POST   /api/v1/infrastructure/kafka/topics                     │
+│ POST   /api/v1/organizations/{org_id}/kafka/topics/bulk        │
+│ GET    /api/v1/organizations/{org_id}/kafka/topics             │
+│ DELETE /api/v1/organizations/{org_id}/kafka/topics             │
+│ PUT    /api/v1/infrastructure/kafka/scale                      │
+├─────────────────────────────────────────────────────────────────┤
+│ REDIS CACHE MANAGEMENT                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ GET    /api/v1/infrastructure/redis/status                     │
+│ GET    /api/v1/infrastructure/redis/topology                   │
+│ PUT    /api/v1/infrastructure/redis/scale                      │
+│ GET    /api/v1/infrastructure/redis/stats                      │
+│ DELETE /api/v1/infrastructure/redis/keys                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Multi-Tenancy Strategy Summary
+
+### Per-Organization Topics Strategy
+**Topic Naming**: Each organization gets dedicated topics with `{org_id}-{topic_type}` format
+**Standard Topics**: Device events, alerts, job results, audit logs, monitoring metrics
+**Management**: Bulk creation during org provisioning, individual topic lifecycle management
+**Isolation**: Complete data separation between organizations using dedicated topics
 
 # Examples for different organizations:
 acme-device-events             # Acme Corp device events

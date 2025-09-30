@@ -57,106 +57,47 @@ graph TB
 - **Master Nodes**: 3 pods handling write operations
 - **Slave Nodes**: 3 pods providing read replicas and failover capability
 - **Hash Slots**: 16,384 total slots distributed across 3 masters
-- **Replication Factor**: 1 slave per master
-- **High Availability**: Automatic failover when masters become unavailable
+### Redis Cluster Requirements
 
-### Slot Distribution
-| Master Node | Pod Name | Hash Slots | Slave Node | Pod Name |
-|-------------|----------|------------|------------|----------|
-| Master 1 | redis-master-0 | 0-5460 (5,461 slots) | Slave 1 | redis-slave-0 |
-| Master 2 | redis-master-1 | 5461-10922 (5,462 slots) | Slave 2 | redis-slave-1 |
-| Master 3 | redis-master-2 | 10923-16383 (5,461 slots) | Slave 3 | redis-slave-2 |
+#### Infrastructure Requirements
+- **Cluster Configuration**: 6-pod Redis cluster (3 masters + 3 slaves)
+- **High Availability**: Automatic failover and data replication
+- **Performance**: Hash slot distribution for optimal load balancing
+- **Persistence**: Data persistence with configurable backup policies
+- **Monitoring**: Redis metrics integration with Prometheus
 
-### Kubernetes Deployment with Redis Operator
-```yaml
-apiVersion: redis.io/v1beta2
-kind: RedisCluster
-metadata:
-  name: rmas-redis-cluster
-  namespace: rmas-system
-  labels:
-    app: rmas-redis
-    component: cache-layer
-spec:
-  # 6-Pod Configuration: 3 Masters + 3 Slaves
-  clusterSize: 3          # Number of master nodes
-  clusterReplicas: 1      # Number of slaves per master (3 masters × 1 slave = 3 slaves)
-  
-  # Redis Configuration
-  redisExporter:
-    enabled: true
-    image: oliver006/redis_exporter:v1.55.0
-    
-  # Pod Resource Configuration
-  kubernetesConfig:
-    image: redis:7.2-alpine
-    imagePullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 500m
-        memory: 1Gi
-      limits:
-        cpu: 1000m
-        memory: 2Gi
-        
-  # Persistent Storage for each pod
-  storage:
-    volumeClaimTemplate:
-      spec:
-        storageClassName: fast-ssd
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-            
-  # Redis Configuration
-  redisConfig:
-    additionalRedisConfig: |
-      # Cluster Configuration
-      cluster-enabled yes
-      cluster-config-file nodes.conf
-      cluster-node-timeout 5000
-      
-      # Memory Configuration  
-      maxmemory 1gb
-      maxmemory-policy allkeys-lru
-      
-      # Persistence Configuration
-      save 900 1
-      save 300 10
-      save 60 10000
-      
-      # Network Configuration
-      timeout 300
-      tcp-keepalive 60
-      
-      # Performance Tuning
-      tcp-backlog 511
-      databases 16
-      
-  # Security Context
-  securityContext:
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-    
-  # Node Affinity (spread across nodes)
-  nodeSelector: {}
-  
-  # Pod Anti-Affinity (avoid same node placement)
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - rmas-redis
-          topologyKey: kubernetes.io/hostname
+#### Slot Distribution Requirements
+| Master Node | Hash Slots | Slave Node | Purpose |
+|-------------|------------|------------|---------|
+| Master 1 | 0-5460 (5,461 slots) | Slave 1 | Primary data partition 1 |
+| Master 2 | 5461-10922 (5,462 slots) | Slave 2 | Primary data partition 2 |
+| Master 3 | 10923-16383 (5,461 slots) | Slave 3 | Primary data partition 3 |
+
+#### Deployment Requirements
+```text
+Redis Cluster Deployment Specifications:
+┌─────────────────────────────────────────────────────────────────┐
+│ CLUSTER CONFIGURATION                                           │
+├─────────────────────────────────────────────────────────────────┤
+│ • Cluster Size: 3 master nodes                                 │
+│ • Replication: 1 slave per master (total 6 pods)              │
+│ • Redis Version: 7.2-alpine (latest stable)                   │
+│ • Operator: Redis Operator for Kubernetes lifecycle           │
+├─────────────────────────────────────────────────────────────────┤
+│ RESOURCE REQUIREMENTS                                           │
+├─────────────────────────────────────────────────────────────────┤
+│ • CPU: 500m request, 1000m limit per pod                       │
+│ • Memory: 1Gi request, 2Gi limit per pod                       │
+│ • Storage: 20Gi persistent volume per pod                      │
+│ • Storage Class: fast-ssd for optimal performance              │
+├─────────────────────────────────────────────────────────────────┤
+│ CONFIGURATION REQUIREMENTS                                       │
+├─────────────────────────────────────────────────────────────────┤
+│ • Max Memory: 1GB per pod with LRU eviction policy             │
+│ • Persistence: Regular snapshots (900s/1, 300s/10, 60s/10000) │
+│ • Network: Connection timeout 300s, TCP keepalive 60s          │
+│ • Security: Non-root user execution with proper permissions    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## 6-Pod Cluster Verification
@@ -256,107 +197,47 @@ Each master node manages multiple logical databases:
 ### 1. Device Management Cache
 
 #### Device Name Lists
-```redis
-# Active devices by organization
-SADD "org:{org_id}:devices:active" {device_id_1} {device_id_2} ...
-EXPIRE "org:{org_id}:devices:active" 300
+### Multi-Tenant Data Organization Requirements
 
-# Device names mapping
-HSET "org:{org_id}:devices:names" {device_id} "Device Name"
-EXPIRE "org:{org_id}:devices:names" 3600
+#### Organization Isolation Strategy
+- **Key Prefix Pattern**: Use `org:{org_id}:` prefix for organization-specific data
+- **Data Categories**: Device management, sessions, monitoring, alerts, configurations
+- **TTL Management**: Appropriate expiration times for different data types
+- **Performance**: Efficient key patterns for fast lookups and bulk operations
 
-# Device groups mapping
-SMEMBERS "org:{org_id}:group:{group_id}:devices"
-EXPIRE "org:{org_id}:group:{group_id}:devices" 1800
+#### Required Data Patterns
+```text
+Redis Multi-Tenant Key Patterns:
+┌─────────────────────────────────────────────────────────────────┐
+│ DEVICE MANAGEMENT                                               │
+├─────────────────────────────────────────────────────────────────┤
+│ • org:{org_id}:devices:active        → Active device lists     │
+│ • org:{org_id}:devices:names         → Device name mappings    │
+│ • org:{org_id}:group:{id}:devices    → Group device lists      │
+│ • device:{device_id}:status          → Real-time device status │
+├─────────────────────────────────────────────────────────────────┤
+│ SESSION MANAGEMENT                                              │
+├─────────────────────────────────────────────────────────────────┤
+│ • laravel_session:{session_id}       → User session data       │
+│ • user:{user_id}:organizations       → User org associations   │
+│ • org:{org_id}:active_users          → Active user tracking    │
+│ • agent_token:{token_hash}            → Agent authentication   │
+├─────────────────────────────────────────────────────────────────┤
+│ MONITORING & ALERTS                                             │
+├─────────────────────────────────────────────────────────────────┤
+│ • device:{device_id}:metrics:{type}  → Time-series metrics     │
+│ • org:{org_id}:metrics:summary       → Aggregated org metrics  │
+│ • device:{device_id}:alert:{type}    → Alert states & triggers │
+│ • org:{org_id}:heartbeats            → Device heartbeat times  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### Device Status Cache
-```redis
-# Real-time device status
-HSET "device:{device_id}:status" 
-  "status" "online"
-  "last_seen" "2025-01-16T12:00:00Z"
-  "cpu_usage" "25.5"
-  "memory_usage" "51.2"
-  "disk_usage" "45.8"
-EXPIRE "device:{device_id}:status" 120
-
-# Device heartbeat tracking
-ZADD "org:{org_id}:heartbeats" {timestamp} {device_id}
-EXPIRE "org:{org_id}:heartbeats" 600
-```
-
-#### Device Configuration Cache
-```redis
-# Device type configurations
-HSET "device_type:{type_id}:config"
-  "heartbeat_interval" "60"
-  "system_info_interval" "3600"
-  "custom_fields" "{\"cpu_cores\": \"integer\", \"ram_gb\": \"integer\"}"
-EXPIRE "device_type:{type_id}:config" 7200
-
-# Device group settings
-HSET "device_group:{group_id}:settings"
-  "auto_approve" "false"
-  "max_devices" "100"
-  "monitoring_enabled" "true"
-EXPIRE "device_group:{group_id}:settings" 3600
-```
-
-### 2. Session Management
-
-#### User Sessions (Laravel)
-```redis
-# Laravel session storage
-SET "laravel_session:{session_id}" 
-  "{\"user_id\": \"{user_id}\", \"org_id\": \"{org_id}\", \"permissions\": {...}}"
-EXPIRE "laravel_session:{session_id}" 7200
-
-# User organization mapping
-SADD "user:{user_id}:organizations" {org_id_1} {org_id_2}
-EXPIRE "user:{user_id}:organizations" 3600
-
-# Active user sessions by organization
-SADD "org:{org_id}:active_users" {user_id}
-EXPIRE "org:{org_id}:active_users" 1800
-```
-
-#### Agent Authentication Cache
-```redis
-# JWT token validation cache
-SET "agent_token:{token_hash}"
-  "{\"device_id\": \"{device_id}\", \"org_id\": \"{org_id}\", \"expires_at\": \"...\"}"
-EXPIRE "agent_token:{token_hash}" 86400
-
-# Device authentication status
-HSET "device:{device_id}:auth"
-  "token_active" "true"
-  "last_auth" "2025-01-16T12:00:00Z"
-  "auth_failures" "0"
-EXPIRE "device:{device_id}:auth" 3600
-```
-
-### 3. Real-time Monitoring Cache
-
-#### Live Metrics
-```redis
-# Real-time device metrics (sliding window)
-ZADD "device:{device_id}:metrics:cpu" {timestamp} {cpu_percentage}
-ZREMRANGEBYSCORE "device:{device_id}:metrics:cpu" 0 {timestamp-300}
-EXPIRE "device:{device_id}:metrics:cpu" 600
-
-# Aggregated organization metrics
-HSET "org:{org_id}:metrics:summary"
-  "total_devices" "150"
-  "online_devices" "142"
-  "avg_cpu_usage" "23.4"
-  "avg_memory_usage" "67.2"
-EXPIRE "org:{org_id}:metrics:summary" 60
-
-# Alert states
-SET "device:{device_id}:alert:cpu_high" 
-  "{\"triggered_at\": \"2025-01-16T12:00:00Z\", \"threshold\": 80, \"current\": 85}"
-EXPIRE "device:{device_id}:alert:cpu_high" 3600
+#### Data Retention Requirements
+- **Session Data**: 2 hours (7200s) for web sessions
+- **Device Status**: 2 minutes (120s) for real-time status
+- **Metrics**: 10 minutes (600s) for sliding window metrics
+- **Configuration**: 2 hours (7200s) for device type configs
+- **Authentication**: 24 hours (86400s) for agent tokens
 ```
 
 #### Custom Metrics Cache

@@ -7,32 +7,32 @@ The RMAS Additional Monitoring Engine provides comprehensive custom device monit
 ### Overview
 ```mermaid
 graph TB
-    subgraph "Data Sources"
-        Agents[Remote Agents<br/>Custom Metrics]
-        CustomFields[Custom Device Fields<br/>Hardware Specs]
-        CalculatedMetrics[Calculated Metrics<br/>Performance Indexes]
-        ManualEntry[Manual Entry<br/>Business Metrics]
+    subgraph DataSources["Data Sources"]
+        Agents["Remote Agents<br/>Custom Metrics"]
+        CustomFields["Custom Device Fields<br/>Hardware Specs"]
+        CalculatedMetrics["Calculated Metrics<br/>Performance Indexes"]
+        ManualEntry["Manual Entry<br/>Business Metrics"]
     end
     
-    subgraph "Data Collection"
-        AgentAPI[Agent API<br/>FastAPI]
-        CustomFieldProcessor[Custom Field Processor]
-        MetricsAggregator[Metrics Aggregator]
+    subgraph DataCollection["Data Collection"]
+        AgentAPI["Agent API<br/>FastAPI"]
+        CustomFieldProcessor["Custom Field Processor"]
+        MetricsAggregator["Metrics Aggregator"]
     end
     
-    subgraph "Message Layer"
-        KafkaCluster[Kafka Cluster (KRaft)<br/>monitoring-data topic]
+    subgraph MessageLayer["Message Layer"]
+        KafkaCluster["Kafka Cluster KRaft<br/>monitoring-data topic"]
     end
     
-    subgraph "Additional Monitoring Engine"
-        MonitoringEngine[Additional Monitoring Engine<br/>Python Microservice]
-        DataProcessor[Custom Data Processor]
-        CustomFieldsEngine[Custom Fields Engine]
-        MetricsCalculator[Metrics Calculator]
+    subgraph MonitoringEngine["Additional Monitoring Engine"]
+        MonitoringEngine["Additional Monitoring Engine<br/>Python Microservice"]
+        DataProcessor["Custom Data Processor"]
+        CustomFieldsEngine["Custom Fields Engine"]
+        MetricsCalculator["Metrics Calculator"]
     end
     
-    subgraph "Storage Layer"
-        InfluxDB[InfluxDB<br/>Time-Series Database]
+    subgraph StorageLayer["Storage Layer"]
+        InfluxDB["InfluxDB<br/>Time-Series Database"]
         Prometheus[Prometheus<br/>Metrics Storage]
         RedisCluster[Redis Cluster<br/>Real-time Cache]
     end
