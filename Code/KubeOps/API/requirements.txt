@@ -1,0 +1,11 @@
+fastapi>=0.95.0
+uvicorn[standard]>=0.21.0
+SQLAlchemy>=1.4
+alembic>=1.11
+python-multipart
+passlib
+argon2-cffi
+python-jose[cryptography]
+pydantic
+aiofiles
+email-validator
