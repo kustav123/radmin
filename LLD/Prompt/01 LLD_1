@@ -1,0 +1,38 @@
+I planning to devolple an an application called RADMIN which is K8S based remote device Admin /managment product. I wil focus into main applaction later  now I am first planing to build an indivusal componet which Iwill use in this project but can be used in other project as well . 
+This compont an be used to maintain LCM of any microservice componet along with it's platform service like Redis Database etc. 
+This is service have 2 componet one API server and one UI , API server will run on Python firstAPI , ani UI on react, 
+Primary there will a sqllite dv on a pvc , 
+This componet will basiculy accept list of compont like Database, kafka redis etc. and deploy then using helm or kubectl along with it can maintain basic intreaction with cluster like cluster helth GET comand output etc. 
+I it will use kubernet SDK to interact with cluster , 
+Componets are
+ 1. Worker 
+
+ This secion wil to maintain worker , wroker table will hva ID, name, imageurl, type (helm/kubectl), staus colum, there will api like 
+ /core/worker
+ GET to get list all  by ID
+ POST to cretea
+ PATCH to edit
+ DELETE to delete, 
+
+ 2. Job 
+ This section will allow to create job 
+ table will have have name,namespace, worker_id (setup relection) ,arugment(jsonb) created_time, last_reconsiled, curent_status etc, 
+ /core/job
+ GET to get list all  by ID
+ POST to cretea
+ PATCH to edit
+ DELETE to delete, 
+ long with there will API to execute , reconsile, helt chek like
+ /core/job/{id}/execute
+ this will spin us worker pood pass argumnt as env , 
+  /core/job/{id}/reconsile 
+  This will check if the deployed componet ae runing else redeploy then 
+  in argumnt section will pass json array artifacte like , helm chart path deployment name etc , this argument part will in a fixed style of helm based and kubctk based, basiccly workwer will run those , 
+  along with it create some api to get cluster staus liek list deployment , list cj, pvc etc. desbale cj scale down deployment etc. 
+rhen ther will API to main cluster resorce api cluster/namespace to manage namspace cluster/cj to mainage cronjob etc 
+theis api server will have necary aution module to work with recat UI, along with same can be used in swager UI as well , 
+we will write worker as well . basiccaly worker to spin up as job  in namespace iwth job id make API call to get job deatil with job then perform instal unistall reconsile etc, then make aother PI all to put the status to main componet. make API for these also, 
+as helm job will ome and go take care the the status secret can be kept externaly and mount in hlm related job 
+write about other API hyou thok off for user mangamnet heth clekc etc . 
+now IN LLD folder crete a sub dir , with a name you sugest for this componet ( name should be one or two word , nice , teche , etc) in this di screa detaild LLD alonf with detail descripctio rtable scema API scema UI detail etc in nice LLD style with some marmaid graph in md file . you can create seaapret separt md file put tjhen as link on index page etc. make sure MD file complet dtailed , ther are nicely writwn in prper formating and style 
+during job creation I might need to upload artifacte like helm chart value file yml rtc ,, add that feture alo in LLD those uploaded fil shuld be doldoloable from same web server 
