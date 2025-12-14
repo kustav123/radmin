@@ -36,17 +36,12 @@ def login(login_in: schemas.LoginRequest, db: Session = Depends(db.get_db)):
     try:
         ph = user.password_hash
         logger.debug("login: user='%s' hash-prefix='%s' hash-len=%d", username, ph[:8], len(ph))
-        print(f"[DEBUG] Login attempt: username={username}")
-        print(f"[DEBUG] Stored hash: {ph[:50]}...")
-        print(f"[DEBUG] Password received: {password}")
     except Exception:
         logger.debug("login: user='%s' has missing/invalid password_hash", username)
 
     if not security.verify_password(password, user.password_hash):
-        print(f"[DEBUG] Password verification FAILED")
         logger.debug("login: password verification failed for user '%s'", username)
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    print(f"[DEBUG] Password verification SUCCESS")
     token = security.create_access_token(str(user.id))
     return {"access_token": token, "token_type": "bearer", "expires_in": 3600, "user": {"id": user.id, "username": user.username, "role": user.role}}
 
@@ -54,6 +49,30 @@ def login(login_in: schemas.LoginRequest, db: Session = Depends(db.get_db)):
 @router.get("/me")
 def me(current_user: object = Depends(get_current_user)):
     return schemas.UserOut.from_orm(current_user)
+
+
+@router.post("/change-password")
+def change_password(req: schemas.ChangePasswordRequest, db: Session = Depends(db.get_db), current_user: object = Depends(get_current_user)):
+    """Change password for the current authenticated user. Requires current password."""
+    # Verify current password
+    if not security.verify_password(req.old_password, current_user.password_hash):
+        logger.debug("change_password: incorrect current password for user '%s'", current_user.username)
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    try:
+        crud.update_user_password(db, current_user.id, req.new_password)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    return {"status": "ok", "message": "Password changed"}
+
+
+@router.patch("/users/{user_id}/role")
+def update_role(user_id: int, req: schemas.RoleUpdateRequest, db: Session = Depends(db.get_db), current_user: object = Depends(require_role("admin"))):
+    """Update a user's role. Admin-only operation."""
+    try:
+        user = crud.update_user_role(db, user_id, req.role)
+    except ValueError as ve:
+        raise HTTPException(status_code=404 if "not found" in str(ve).lower() else 400, detail=str(ve))
+    return {"id": user.id, "username": user.username, "role": user.role}
 
 
 @router.get("/debug/inspect")

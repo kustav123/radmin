@@ -1,0 +1,71 @@
+# Virtual environments
+.venv/
+venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+share/python-wheels/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+*.tox/
+*.coverage
+*.coverage.*
+.cache
+.pytest_cache/
+cover/
+htmlcov/
+
+# Editor directories and files
+.vscode/
+.idea/
+.mvn/
+*.swp
+*~
+
+# Local env files
+.env
+.env.*
+env/
+ENV/
+
+# Database
+kubeops.db
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Uploads / artifacts
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db

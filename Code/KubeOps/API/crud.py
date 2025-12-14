@@ -6,6 +6,10 @@ def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
 
+def get_user_by_id(db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+
 def create_user(db: Session, username: str, email: str, password: str, role: str = "user"):
     if password is None:
         raise ValueError("Password is required")
@@ -52,3 +56,30 @@ def get_or_create_admin(db: Session, username: str, email: str, password: str):
         return user
     # create user
     return create_user(db, username=username, email=email, password=password, role="admin")
+
+
+def update_user_password(db: Session, user_id: int, new_password: str):
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise ValueError("User not found")
+    if new_password is None or new_password == "":
+        raise ValueError("New password is required")
+    hashed = security.get_password_hash(new_password)
+    user.password_hash = hashed
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_user_role(db: Session, user_id: int, new_role: str):
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise ValueError("User not found")
+    if not new_role:
+        raise ValueError("Role is required")
+    user.role = new_role
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

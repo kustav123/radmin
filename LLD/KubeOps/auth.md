@@ -100,6 +100,37 @@ Refresh access token using refresh token.
 ### GET /auth/me
 Get current user information.
 
+
+### POST /auth/change-password
+Change the authenticated user's password. Requires the current password and the new password.
+
+**Request Body:**
+```json
+{
+    "old_password": "currentPass",
+    "new_password": "newSecurePassword123"
+}
+```
+
+**Response:**
+```json
+{ "status": "ok", "message": "Password changed" }
+```
+
+
+### PATCH /auth/users/{user_id}/role
+Admin-only endpoint to update another user's role.
+
+**Request Body:**
+```json
+{ "role": "operator" }
+```
+
+**Response:**
+```json
+{ "id": 2, "username": "alice", "role": "operator" }
+```
+
 ## 08.04 Implementation Details
 
 ### JWT Configuration

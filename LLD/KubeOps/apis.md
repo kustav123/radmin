@@ -367,3 +367,25 @@ sequenceDiagram
     K8s->>API: Worker job completes
     API->>DB: Update job status
 ```
+
+  ## 05.07 User Management APIs
+
+  ### POST /auth/change-password
+  Change the current user's password (authenticated).
+
+  **Authorization:** Bearer token (any authenticated user)
+
+  **Request Body:**
+  ```json
+  { "old_password": "current", "new_password": "newpass" }
+  ```
+
+  ### PATCH /auth/users/{user_id}/role
+  Update another user's role. Admin-only.
+
+  **Authorization:** Admin
+
+  **Request Body:**
+  ```json
+  { "role": "operator" }
+  ```
