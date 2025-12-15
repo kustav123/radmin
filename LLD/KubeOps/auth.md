@@ -97,6 +97,25 @@ Authenticate user and return JWT token.
 ### POST /auth/refresh
 Refresh access token using refresh token.
 
+**POST /auth/refresh (renew access token)**
+
+This endpoint accepts the current access token in the `Authorization` header and returns a new access token with a fresh expiry. This implementation treats the provided access token as proof of authentication; in production you may want to implement a separate long-lived refresh token mechanism.
+
+**Headers:**
+- `Authorization: Bearer <access_token>`
+
+**Response:**
+```json
+{
+    "access_token": "<new-token>",
+    "token_type": "bearer",
+    "expires_in": 3600
+}
+```
+
+Notes:
+- The implementation sets a long-lived refresh token as an HttpOnly cookie named `refresh_token` when the user logs in. The `/auth/refresh` endpoint reads this cookie and issues a new access token. This protects the refresh token from JavaScript access and reduces the risk of token theft via XSS. In production, ensure the cookie uses `secure=True` and proper `SameSite` policy, and implement refresh token revocation/storage if you need immediate logout/revocation.
+
 ### GET /auth/me
 Get current user information.
 

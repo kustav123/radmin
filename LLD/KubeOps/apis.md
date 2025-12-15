@@ -389,3 +389,20 @@ sequenceDiagram
   ```json
   { "role": "operator" }
   ```
+
+  ### POST /auth/refresh
+  Renew the access token using the existing valid access token.
+
+  **Authorization:** Provide current access token via `Authorization: Bearer <token>` header.
+
+  **Response:**
+  ```json
+  {
+    "access_token": "<new-token>",
+    "token_type": "bearer",
+    "expires_in": 3600
+  }
+  ```
+
+  Notes:
+  - The server stores a long-lived refresh token as an HttpOnly cookie named `refresh_token` on successful login. The `/auth/refresh` endpoint reads the cookie and returns a new access token. For production, set the cookie `secure` flag and implement server-side revocation if necessary.

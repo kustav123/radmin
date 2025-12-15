@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header, Response, Cookie
 import logging
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,7 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(db.get_db), curr
 
 
 @router.post("/login")
-def login(login_in: schemas.LoginRequest, db: Session = Depends(db.get_db)):
+def login(login_in: schemas.LoginRequest, db: Session = Depends(db.get_db), response: Response = None):
     username = login_in.username
     password = login_in.password
     user = crud.get_user_by_username(db, username)
@@ -43,6 +43,11 @@ def login(login_in: schemas.LoginRequest, db: Session = Depends(db.get_db)):
         logger.debug("login: password verification failed for user '%s'", username)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = security.create_access_token(str(user.id))
+    # create a long-lived refresh token and set it as a HttpOnly cookie
+    refresh = security.create_refresh_token(str(user.id))
+    if response is not None:
+        # In production set secure=True and appropriate samesite depending on deployment
+        response.set_cookie(key="refresh_token", value=refresh, httponly=True, samesite="Lax", secure=False, max_age=security.REFRESH_TOKEN_EXPIRE_MINUTES * 60)
     return {"access_token": token, "token_type": "bearer", "expires_in": 3600, "user": {"id": user.id, "username": user.username, "role": user.role}}
 
 
@@ -75,13 +80,30 @@ def update_role(user_id: int, req: schemas.RoleUpdateRequest, db: Session = Depe
     return {"id": user.id, "username": user.username, "role": user.role}
 
 
-@router.get("/debug/inspect")
-def debug_inspect(username: str, password: str, db: Session = Depends(db.get_db)):
-    """Debug endpoint: returns what the server sees for a username and whether the password verifies.
-    Only intended for local development debugging and should be removed before production."""
-    user = crud.get_user_by_username(db, username)
+
+@router.post("/refresh")
+def refresh_token(refresh_token: str = Cookie(None), db: Session = Depends(db.get_db), response: Response = None):
+    """Refresh an access token.
+
+    This endpoint reads the refresh token from an HttpOnly cookie named `refresh_token`. It does NOT accept Bearer tokens in the Authorization header. If the cookie is valid and the user exists, a new access token is returned and the refresh cookie is rotated.
+    """
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing refresh token cookie")
+    payload = security.decode_access_token(refresh_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    user = crud.get_user_by_id(db, int(user_id))
     if not user:
-        return {"found": False}
-    ph = user.password_hash
-    verified = security.verify_password(password, ph)
-    return {"found": True, "username": user.username, "hash_prefix": ph[:12], "hash_len": len(ph), "verified": verified}
+        raise HTTPException(status_code=401, detail="User not found")
+    new_token = security.create_access_token(str(user.id))
+    # Optionally rotate the refresh token by issuing a new cookie
+    new_refresh = security.create_refresh_token(str(user.id))
+    if response is not None:
+        response.set_cookie(key="refresh_token", value=new_refresh, httponly=True, samesite="Lax", secure=False, max_age=security.REFRESH_TOKEN_EXPIRE_MINUTES * 60)
+    return {"access_token": new_token, "token_type": "bearer", "expires_in": 3600}
+
+
+# Note: debug endpoints removed for security. If you need runtime inspection, use local REPL or logs.
