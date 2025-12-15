@@ -57,6 +57,31 @@ Update an existing worker.
   "status": "inactive"
 }
 ```
+**Example (update worker 1) — JSON body, curl and PowerShell:**
+
+JSON body:
+```json
+{
+  "name": "helm-deployer",
+  "image_url": "ghcr.io/myorg/helm-deployer:1.2.0",
+  "type": "helm",
+  "status": "inactive"
+}
+```
+
+curl (include Bearer token):
+```bash
+curl -X PATCH "http://localhost:8000/api/v1/core/worker/1" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"helm-deployer","image_url":"ghcr.io/myorg/helm-deployer:1.2.0","type":"helm","status":"inactive"}'
+```
+
+PowerShell (Invoke-WebRequest with session):
+```powershell
+$body = @{ name = 'helm-deployer'; image_url = 'ghcr.io/myorg/helm-deployer:1.2.0'; type = 'helm'; status = 'inactive' } | ConvertTo-Json
+Invoke-WebRequest -Uri http://localhost:8000/api/v1/core/worker/1 -Method PATCH -Headers @{ "Authorization" = "Bearer $token"; "Content-Type" = "application/json" } -Body $body -UseBasicParsing
+```
 
 ### DELETE /core/worker/{id}
 Delete a worker.
@@ -117,6 +142,17 @@ Create a new job.
 Update an existing job.
 
 **Authorization:** Admin and Operator roles only
+
+**Request Body (example):**
+```json
+{
+  "name": "redis-deployment-updated",
+  "namespace": "default",
+  "worker_id": 1,
+  "arguments": { "chart": "bitnami/redis", "version": "18.0.0" },
+  "current_status": "pending"
+}
+```
 
 ### DELETE /core/job/{id}
 Delete a job.

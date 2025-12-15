@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-import crud, schemas, db
+from sqlalchemy.exc import IntegrityError
+import crud, schemas, db, models
 from deps import get_current_user, require_role
 
 router = APIRouter()
@@ -21,25 +22,36 @@ def create_worker(worker_in: schemas.WorkerCreate, db: Session = Depends(db.get_
 @router.patch("/{worker_id}")
 def patch_worker(worker_id: int, payload: dict, db: Session = Depends(db.get_db), current_user: object = Depends(require_role("operator"))):
     # simple partial update for status
-    worker = db.query(db.Base.classes.worker).filter_by(id=worker_id).first() if hasattr(db.Base, 'classes') else None
-    if not worker:
-        # fallback: try ORM model
-        from models import Worker
-        worker = db.query(Worker).filter(Worker.id == worker_id).first()
+    # Use the ORM model directly
+    worker = db.query(models.Worker).filter(models.Worker.id == worker_id).first()
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
-    if 'status' in payload:
-        worker.status = payload['status']
-    db.add(worker)
-    db.commit()
-    db.refresh(worker)
+    
+    # Allow partial updates for these fields only
+    allowed = ("name", "image_url", "type", "status")
+    updated = False
+    for key in allowed:
+        if key in payload and payload[key] is not None:
+            setattr(worker, key, payload[key])
+            updated = True
+
+    if not updated:
+        return schemas.WorkerOut.from_orm(worker)
+
+    try:
+        db.add(worker)
+        db.commit()
+        db.refresh(worker)
+    except IntegrityError as ie:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Database integrity error: {ie.orig}")
+
     return schemas.WorkerOut.from_orm(worker)
 
 
 @router.delete("/{worker_id}")
 def delete_worker(worker_id: int, db: Session = Depends(db.get_db), current_user: object = Depends(require_role("operator"))):
-    from models import Worker
-    worker = db.query(Worker).filter(Worker.id == worker_id).first()
+    worker = db.query(models.Worker).filter(models.Worker.id == worker_id).first()
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
     db.delete(worker)
