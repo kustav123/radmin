@@ -38,12 +38,72 @@ def get_jobs(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Job).offset(skip).limit(limit).all()
 
 
-def create_job(db: Session, name: str, namespace: str, worker_id: int, arguments):
-    j = models.Job(name=name, namespace=namespace, worker_id=worker_id, arguments=arguments)
+def create_job(db: Session, name: str, namespace: str, worker_id: int, arguments, service_account_id: int = None,
+               completions: int = None, parallelism: int = None, backoff_limit: int = 6,
+               active_deadline_seconds: int = None, ttl_seconds_after_finished: int = None,
+               restart_policy: str = "Never", image: str = None, command: list = None, args: list = None,
+               env_vars: dict = None, resources: dict = None, volumes: list = None, volume_mounts: list = None,
+               image_pull_secrets: list = None, labels: dict = None, annotations: dict = None):
+    # Fetch worker to get the image URL
+    worker = db.query(models.Worker).filter(models.Worker.id == worker_id).first()
+    if not worker:
+        raise ValueError(f"Worker with id {worker_id} not found")
+    
+    # Use worker's image_url if no image is provided
+    job_image = image if image else worker.image_url
+    
+    j = models.Job(
+        name=name,
+        namespace=namespace,
+        worker_id=worker_id,
+        service_account_id=service_account_id,
+        arguments=arguments,
+        completions=completions,
+        parallelism=parallelism,
+        backoff_limit=backoff_limit,
+        active_deadline_seconds=active_deadline_seconds,
+        ttl_seconds_after_finished=ttl_seconds_after_finished,
+        restart_policy=restart_policy,
+        image=job_image,
+        command=command,
+        args=args,
+        env_vars=env_vars,
+        resources=resources,
+        volumes=volumes,
+        volume_mounts=volume_mounts,
+        image_pull_secrets=image_pull_secrets,
+        labels=labels,
+        annotations=annotations
+    )
     db.add(j)
     db.commit()
     db.refresh(j)
     return j
+
+
+def get_serviceaccounts(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.ServiceAccount).offset(skip).limit(limit).all()
+
+
+def get_serviceaccount_by_id(db: Session, sa_id: int):
+    return db.query(models.ServiceAccount).filter(models.ServiceAccount.id == sa_id).first()
+
+
+def create_serviceaccount(db: Session, name: str):
+    sa = models.ServiceAccount(name=name)
+    db.add(sa)
+    db.commit()
+    db.refresh(sa)
+    return sa
+
+
+def delete_serviceaccount(db: Session, sa_id: int):
+    sa = get_serviceaccount_by_id(db, sa_id)
+    if not sa:
+        return None
+    db.delete(sa)
+    db.commit()
+    return sa
 
 
 def get_or_create_admin(db: Session, username: str, email: str, password: str):

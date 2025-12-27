@@ -57,19 +57,81 @@ class WorkerOut(WorkerBase):
         from_attributes = True
 
 
+class ServiceAccountCreate(BaseModel):
+    name: str
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "my-service-account"
+            }
+        }
+
+
+class ServiceAccountOut(BaseModel):
+    id: int
+    name: str
+    created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
 class JobCreate(BaseModel):
     name: str
     namespace: str
     worker_id: int
+    service_account_id: Optional[int] = None
+    
+    # Kubernetes Job Spec Parameters
+    completions: Optional[int] = None
+    parallelism: Optional[int] = None
+    backoff_limit: Optional[int] = 6
+    active_deadline_seconds: Optional[int] = None
+    ttl_seconds_after_finished: Optional[int] = None
+    
+    # Pod Template Parameters
+    restart_policy: Optional[str] = "Never"
+    image: Optional[str] = None  # If not provided, fetched from worker.image_url
+    command: Optional[List[str]] = None
+    args: Optional[List[str]] = None
+    env_vars: Optional[dict] = None
+    resources: Optional[dict] = None
+    volumes: Optional[List[dict]] = None
+    volume_mounts: Optional[List[dict]] = None
+    image_pull_secrets: Optional[List[str]] = None
+    
+    # Metadata
+    labels: Optional[dict] = None
+    annotations: Optional[dict] = None
+    
+    # Worker-specific arguments
     arguments: Any
+    
     class Config:
         json_schema_extra = {
             "example": {
-                "name": "redis-deployment",
+                "name": "test-job",
                 "namespace": "default",
                 "worker_id": 1,
-                "arguments": {"chart": "bitnami/redis", "version": "17.0.0"}
-            }
+                "service_account_id": 1,
+                "backoff_limit": 3,
+                "completions": 1,
+                "parallelism": 1,
+                "restart_policy": "Never",
+                "command": ["sh", "-c", "echo Hello from Kubernetes Job && sleep 5"],
+                "env_vars": {
+                    "ENV_VAR": "value"
+                },
+                "labels": {
+                    "app": "test",
+                    "env": "dev"
+                },
+                "arguments": {
+                    "custom": "data"
+                }
+            },
+            "description": "Note: image is automatically fetched from the worker's image_url. You can optionally override it by passing the image parameter."
         }
 
 
@@ -105,6 +167,31 @@ class JobOut(BaseModel):
     name: str
     namespace: str
     worker_id: int
+    service_account_id: Optional[int]
+    
+    # Kubernetes Job Spec Parameters
+    completions: Optional[int]
+    parallelism: Optional[int]
+    backoff_limit: Optional[int]
+    active_deadline_seconds: Optional[int]
+    ttl_seconds_after_finished: Optional[int]
+    
+    # Pod Template Parameters
+    restart_policy: Optional[str]
+    image: Optional[str]
+    command: Optional[List[str]]
+    args: Optional[List[str]]
+    env_vars: Optional[dict]
+    resources: Optional[dict]
+    volumes: Optional[List[dict]]
+    volume_mounts: Optional[List[dict]]
+    image_pull_secrets: Optional[List[str]]
+    
+    # Metadata
+    labels: Optional[dict]
+    annotations: Optional[dict]
+    
+    # Worker-specific and status
     arguments: Any
     created_time: Optional[datetime]
     current_status: str

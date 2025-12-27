@@ -4,7 +4,7 @@ import os
 import logging
 
 from db import engine, Base, SessionLocal
-from routers import auth, core_worker, core_job, files, health
+from routers import auth, core_worker, core_job, files, health, core_serviceaccount
 import crud
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(core_worker.router, prefix="/api/v1/core/worker", tags=["worker"])
 app.include_router(core_job.router, prefix="/api/v1/core/job", tags=["job"])
+app.include_router(core_serviceaccount.router, prefix="/api/v1/cluster/serviceaccount", tags=["cluster"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
 app.include_router(health.router, prefix="/api/v1/cluster", tags=["cluster"])
 
