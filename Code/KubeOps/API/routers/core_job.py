@@ -4,6 +4,10 @@ from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 import crud, schemas, db, models
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 router = APIRouter()
 
@@ -50,12 +54,18 @@ def execute_job(job_id: int, db: Session = Depends(db.get_db)):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    # Load kubeconfig from C:\Users\kusta\.kube\config
-    kubeconfig_path = os.path.expanduser(r"C:\Users\kusta\.kube\config")
+    # Load Kubernetes configuration
+    # Try in-cluster config first (when running inside Kubernetes)
+    # Fall back to kubeconfig file (when running outside)
     try:
-        config.load_kube_config(config_file=kubeconfig_path)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load kubeconfig: {str(e)}")
+        config.load_incluster_config()
+    except config.ConfigException:
+        # Not running in cluster, try kubeconfig file
+        try:
+            kubeconfig_path = os.getenv("KUBECONFIG_PATH", os.path.expanduser("~/.kube/config"))
+            config.load_kube_config(config_file=kubeconfig_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to load kubeconfig: {str(e)}")
     
     # Create Kubernetes API client
     batch_v1 = client.BatchV1Api()
