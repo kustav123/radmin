@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('org_code')->unique();
             $table->string('name');
+            $table->jsonb('department')->nullable();
             $table->boolean('status')->default(true);
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();

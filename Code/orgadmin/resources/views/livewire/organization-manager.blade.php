@@ -113,12 +113,26 @@
                                 {{ $org->created_at->format('M d, Y h:i A') }}
                             </td>
                             <td class="px-4 py-3">
-                                <button wire:click="edit({{ $org->id }})" class="font-medium text-blue-600 dark:text-blue-500 hover:underline mr-3 group relative">
-                                    Edit
-                                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded py-1 px-2 z-10 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        Edit Organization Name
-                                    </div>
-                                </button>
+                                <div class="flex items-center space-x-2">
+                                    <button wire:click="openDeptModal({{ $org->id }})" class="p-2 text-purple-600 hover:bg-purple-100 rounded-full hover:text-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/50 dark:hover:text-purple-300 transition-colors group relative">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                        </svg>
+                                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded py-1 px-2 z-50 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg pointer-events-none">
+                                            Manage Departments
+                                            <svg class="absolute text-gray-900 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" xml:space="preserve"><polygon class="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                                        </div>
+                                    </button>
+                                    <button wire:click="edit({{ $org->id }})" class="p-2 text-blue-600 hover:bg-blue-100 rounded-full hover:text-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/50 dark:hover:text-blue-300 transition-colors group relative">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded py-1 px-2 z-50 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg pointer-events-none">
+                                            Edit Organization
+                                            <svg class="absolute text-gray-900 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" xml:space="preserve"><polygon class="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                                        </div>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -174,6 +188,124 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    @endif
+
+    <!-- Department Modal -->
+    @if($isDeptModalOpen)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity duration-300">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-2xl transform scale-100 transition-transform duration-300 border border-gray-100 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-5">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                        Manage Departments
+                    </h3>
+                    <button wire:click="closeDeptModal()" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Add Department Form -->
+                <div class="mb-6 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ $editingDeptIndex !== null ? 'Edit Department' : 'Add New Department' }}</h4>
+                    <form wire:submit.prevent="saveDepartment" class="flex flex-col md:flex-row gap-3 items-end">
+                        <div class="flex-grow w-full">
+                            <label for="deptName" class="sr-only">Department Name</label>
+                            <input type="text" wire:model="deptName" id="deptName" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-purple-500 dark:focus:border-purple-500" placeholder="Department Name" required>
+                            @error('deptName') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="w-full md:w-auto flex items-center mb-2 md:mb-0">
+                             <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" wire:model="deptStatus" class="sr-only peer">
+                                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                                <span class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">Active</span>
+                            </label>
+                        </div>
+                        <div class="flex gap-2">
+                            @if($editingDeptIndex !== null)
+                                <button type="button" wire:click="resetDeptInputs" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                                    Cancel
+                                </button>
+                            @endif
+                            <button type="submit" class="px-5 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 shadow-lg shadow-purple-500/30 transition-shadow">
+                                {{ $editingDeptIndex !== null ? 'Update' : 'Add' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Departments List -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">Name</th>
+                                <th scope="col" class="px-4 py-3">Status</th>
+                                <th scope="col" class="px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($departments as $index => $dept)
+                                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                    <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                                        {{ $dept['name'] }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <label class="relative inline-flex items-center cursor-pointer group">
+                                            <input type="checkbox" wire:click="toggleDeptStatus({{ $index }})" class="sr-only peer" {{ ($dept['status'] ?? true) ? 'checked' : '' }}>
+                                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                                            <span class="ml-2 text-xs font-medium text-gray-900 dark:text-gray-300 group-hover:text-purple-600 transition-colors">
+                                                {{ ($dept['status'] ?? true) ? 'Active' : 'Inactive' }}
+                                            </span>
+                                        </label>
+                                    </td>
+                                    <td class="px-4 py-3 flex gap-2">
+                                        <button wire:click="editDepartment({{ $index }})" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">Edit</button>
+                                        <button wire:click="confirmDeleteDepartment({{ $index }})" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Delete</button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="3" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                                        No departments found.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                    </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        @if($showDeleteConfirmation)
+            <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity duration-300">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm transform scale-100 transition-transform duration-300 border border-gray-100 dark:border-gray-700">
+                    <div class="text-center">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                            <svg class="h-6 w-6 text-red-600 dark:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Delete Department</h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                Are you sure you want to delete this department? This action cannot be undone.
+                            </p>
+                        </div>
+                        <div class="mt-5 sm:mt-6 flex justify-center space-x-3">
+                            <button wire:click="cancelDelete" type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                                Cancel
+                            </button>
+                            <button wire:click="deleteConfirmed" type="button" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-lg shadow-red-500/30">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
             </div>
         </div>
     @endif

@@ -115,4 +115,132 @@ class OrganizationManager extends Component
         Organization::find($id)->delete();
         session()->flash('message', 'Organization Deleted Successfully.');
     }
+
+    // Department Management
+    public $isDeptModalOpen = false;
+    public $deptOrgId;
+    public $departments = [];
+    public $deptName;
+    public $deptStatus = true;
+    public $editingDeptIndex = null;
+    
+    // Delete Confirmation State
+    public $deleteDeptIndex = null;
+    public $showDeleteConfirmation = false;
+
+    public function openDeptModal($id)
+    {
+        $org = Organization::findOrFail($id);
+        $this->deptOrgId = $id;
+        $this->departments = $org->department ?? [];
+        $this->isDeptModalOpen = true;
+        $this->resetDeptInputs();
+    }
+
+    public function closeDeptModal()
+    {
+        $this->isDeptModalOpen = false;
+        $this->departments = [];
+        $this->deptOrgId = null;
+        $this->showDeleteConfirmation = false;
+        $this->deleteDeptIndex = null;
+    }
+
+    public function resetDeptInputs()
+    {
+        $this->deptName = '';
+        $this->deptStatus = true;
+        $this->editingDeptIndex = null;
+    }
+
+    public function saveDepartment()
+    {
+        $this->validate([
+            'deptName' => 'required|min:2|max:255',
+        ]);
+
+        $deptData = [
+            'name' => $this->deptName,
+            'status' => (bool)$this->deptStatus,
+            'created_by' => Auth::id(),
+            'created_at' => now()->toDateTimeString(),
+        ];
+
+        $org = Organization::findOrFail($this->deptOrgId);
+        
+        if ($this->editingDeptIndex !== null) {
+            $existing = $this->departments[$this->editingDeptIndex];
+            $deptData['created_by'] = $existing['created_by'] ?? Auth::id();
+            $deptData['created_at'] = $existing['created_at'] ?? now()->toDateTimeString();
+            $deptData['id'] = $existing['id'] ?? (string) Str::uuid();
+            
+            $this->departments[$this->editingDeptIndex] = $deptData;
+            $msg = 'Department updated successfully.';
+        } else {
+            $deptData['id'] = (string) Str::uuid();
+            $this->departments[] = $deptData;
+            $msg = 'Department added successfully.';
+        }
+
+        $org->department = $this->departments;
+        $org->save();
+        
+        $this->resetDeptInputs();
+        session()->flash('message', $msg);
+    }
+
+    public function editDepartment($index)
+    {
+        $this->editingDeptIndex = $index;
+        $dept = $this->departments[$index];
+        $this->deptName = $dept['name'];
+        $this->deptStatus = $dept['status'] ?? true;
+    }
+
+    public function confirmDeleteDepartment($index)
+    {
+        $this->deleteDeptIndex = $index;
+        $this->showDeleteConfirmation = true;
+    }
+
+    public function deleteConfirmed()
+    {
+        if ($this->deleteDeptIndex !== null && isset($this->departments[$this->deleteDeptIndex])) {
+            $this->deleteDepartment($this->deleteDeptIndex);
+            $this->showDeleteConfirmation = false;
+            $this->deleteDeptIndex = null;
+        }
+    }
+
+    public function cancelDelete()
+    {
+        $this->showDeleteConfirmation = false;
+        $this->deleteDeptIndex = null;
+    }
+
+    public function deleteDepartment($index)
+    {
+        unset($this->departments[$index]);
+        $this->departments = array_values($this->departments);
+        
+        $org = Organization::findOrFail($this->deptOrgId);
+        $org->department = $this->departments;
+        $org->save();
+        
+        session()->flash('message', 'Department deleted successfully.');
+    }
+
+    public function toggleDeptStatus($index)
+    {
+        // Ensure the status key exists and toggle it. 
+        // Using strict comparison for safety, defaulting to true if missing (though it should be presumably true on creation)
+        $currentStatus = $this->departments[$index]['status'] ?? true;
+        $this->departments[$index]['status'] = !$currentStatus;
+        
+        $org = Organization::findOrFail($this->deptOrgId);
+        $org->department = $this->departments;
+        $org->save();
+        
+        session()->flash('message', 'Department status updated successfully.');
+    }
 }

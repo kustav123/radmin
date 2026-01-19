@@ -11,6 +11,12 @@ class Organization extends Model
         'name',
         'status',
         'created_by',
+        'department',
+    ];
+
+    protected $casts = [
+        'department' => 'array',
+        'status' => 'boolean',
     ];
 
     public function creator()
