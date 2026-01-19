@@ -16,6 +16,22 @@ class OrganizationManager extends Component
     public $name;
     public $organizationId;
     public $isModalOpen = false;
+    
+    // Tree View State
+    public $isTreeModalOpen = false;
+    public $treeData = [];
+
+    public function openTreeModal()
+    {
+        $this->treeData = Organization::select('id', 'name', 'org_code', 'department', 'status')->orderBy('name')->get();
+        $this->isTreeModalOpen = true;
+    }
+
+    public function closeTreeModal()
+    {
+        $this->isTreeModalOpen = false;
+        $this->treeData = [];
+    }
 
     protected $rules = [
         'name' => 'required|min:3|max:255',

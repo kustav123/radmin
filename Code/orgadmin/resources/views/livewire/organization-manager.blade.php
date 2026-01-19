@@ -3,9 +3,15 @@
         <h2 class="text-3xl font-bold text-gray-900 dark:text-white">
             Organization Management
         </h2>
-        <button wire:click="create()" class="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full shadow-md hover:from-purple-600 hover:to-pink-600 transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
-            + Create New Organization
-        </button>
+        <div class="flex gap-2">
+            <button wire:click="openTreeModal()" class="px-6 py-2.5 bg-white text-gray-700 border border-gray-300 font-semibold rounded-full shadow-sm hover:bg-gray-50 transition duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:focus:ring-offset-gray-900 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                Tree View
+            </button>
+            <button wire:click="create()" class="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full shadow-md hover:from-purple-600 hover:to-pink-600 transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+                + Create New Organization
+            </button>
+        </div>
     </div>
 
     <!-- Stats Grid -->
@@ -306,6 +312,81 @@
                 </div>
             </div>
         @endif
+            </div>
+        </div>
+    @endif
+    <!-- Tree View Modal -->
+    @if($isTreeModalOpen)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity duration-300">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-4xl transform scale-100 transition-transform duration-300 border border-gray-100 dark:border-gray-700 h-[80vh] flex flex-col">
+                <div class="flex justify-between items-center mb-5 border-b border-gray-200 dark:border-gray-700 pb-3">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        Start Organization Hierarchy
+                    </h3>
+                    <button wire:click="closeTreeModal()" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none transition-transform hover:rotate-90">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                    @if(count($treeData) > 0)
+                        <ul class="space-y-3">
+                            @foreach($treeData as $org)
+                                <li class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 border border-gray-200 dark:border-gray-600">
+                                    <details class="group open:bg-white open:dark:bg-gray-800 open:shadow-sm open:rounded-lg transition-all duration-300">
+                                        <summary class="flex items-center cursor-pointer list-none p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                            <span class="mr-3 transition-transform group-open:rotate-90 text-gray-500 dark:text-gray-400">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                                            </span>
+                                            <div class="flex items-center gap-3">
+                                                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
+                                                    {{ $org->org_code }}
+                                                </span>
+                                                <span class="text-base font-bold text-gray-800 dark:text-white">{{ $org->name }}</span>
+                                                <span class="text-xs {{ $org->status ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400' }}">
+                                                    ● {{ $org->status ? 'Active' : 'Inactive' }}
+                                                </span>
+                                            </div>
+                                        </summary>
+                                        <div class="pl-10 pr-4 pb-4 pt-2 text-sm text-gray-600 dark:text-gray-300 border-l-2 border-gray-200 dark:border-gray-600 ml-4 mt-1">
+                                            @if(!empty($org->department))
+                                                <div class="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Departments</div>
+                                                <ul class="space-y-2">
+                                                    @foreach($org->department as $dept)
+                                                        <li class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-100 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-700 transition-colors">
+                                                            <div class="flex items-center text-gray-700 dark:text-gray-200">
+                                                                <svg class="w-3 h-3 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                                {{ $dept['name'] }}
+                                                            </div>
+                                                            <span class="text-xs px-2 py-0.5 rounded-full {{ ($dept['status'] ?? true) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' }}">
+                                                                {{ ($dept['status'] ?? true) ? 'Active' : 'Inactive' }}
+                                                            </span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                <span class="italic text-gray-400">No departments found.</span>
+                                            @endif
+                                        </div>
+                                    </details>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="text-center py-10 text-gray-500 dark:text-gray-400">
+                            No data available using Tree View.
+                        </div>
+                    @endif
+                </div>
+                
+                <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                    <button wire:click="closeTreeModal()" class="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
     @endif

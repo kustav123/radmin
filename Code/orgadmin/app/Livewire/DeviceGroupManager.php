@@ -17,6 +17,22 @@ class DeviceGroupManager extends Component
     public $deviceGroupId;
     public $isModalOpen = false;
 
+    // Tree View State
+    public $isTreeModalOpen = false;
+    public $treeData = [];
+
+    public function openTreeModal()
+    {
+        $this->treeData = DeviceGroup::select('id', 'name', 'group_code', 'subgroup', 'status')->orderBy('name')->get();
+        $this->isTreeModalOpen = true;
+    }
+
+    public function closeTreeModal()
+    {
+        $this->isTreeModalOpen = false;
+        $this->treeData = [];
+    }
+
     protected $rules = [
         'name' => 'required|min:3|max:255',
     ];
