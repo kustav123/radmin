@@ -16,4 +16,5 @@ Route::middleware([
     })->name('dashboard');
 
     Route::get('/organization', \App\Livewire\OrganizationManager::class)->name('organization');
+    Route::get('/device-group', \App\Livewire\DeviceGroupManager::class)->name('device-group');
 });
