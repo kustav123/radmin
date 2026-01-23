@@ -1,17 +1,24 @@
-<x-ui.crud-modal id="department-crud-modal" :show="$show" wire:click="close">
+<x-ui.crud-modal id="organization-crud-modal" :show="$show" wire:click="close">
     <x-slot:title>
-        Create Department
+        {{ $organizationId ? 'Edit Organization' : 'Create Organization' }}
     </x-slot:title>
 
     <form wire:submit.prevent="save">
         <div class="grid gap-4 grid-cols-2 py-4 md:py-6">
             <div class="col-span-2">
-                <label for="name" class="block mb-2.5 text-sm font-medium text-heading">Name</label>
-                <input type="text" wire:model="name" name="name" id="name"
+                <label for="name" class="block mb-2.5 text-sm font-medium text-heading">Organization Name</label>
+                <input type="text" wire:model="name" id="name"
                     class="bg-neutral-secondary-medium border border-default-medium text-heading text-sm rounded-base focus:ring-brand focus:border-brand block w-full px-3 py-2.5 shadow-xs placeholder:text-body"
-                    placeholder="Type product name" required="" @error('name') class="border-red-500" @enderror />
+                    placeholder="Type organization name" required />
+                @error('name') <span class="text-sm text-red-600">{{ $message }}</span> @enderror
             </div>
         </div>
+
+        @if(!$organizationId)
+            <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-base text-sm text-yellow-800">
+                Org Code will be auto-generated (Random 6 lowercase chars).
+            </div>
+        @endif
 
         <div class="flex items-center space-x-4 border-t border-default pt-4 md:pt-6">
             <button type="submit" wire:click="save"
@@ -21,7 +28,7 @@
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M5 12h14m-7 7V5" />
                 </svg>
-                Add new product
+                {{ $organizationId ? 'Update Organization' : 'Create Organization' }}
             </button>
             <button wire:click="close" type="button"
                 class="text-body bg-neutral-secondary-medium box-border border border-default-medium hover:bg-neutral-tertiary-medium hover:text-heading focus:ring-4 focus:ring-neutral-tertiary shadow-xs font-medium leading-5 rounded-base text-sm px-4 py-2.5 focus:outline-none">Cancel</button>

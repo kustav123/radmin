@@ -8,10 +8,16 @@ use App\Models\Organization;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 
+
 class OrganizationTable extends Component
 {
     use WithPagination;
+
     public $search = '';
+
+    protected $listeners = [
+        'organizationSaved' => '$refresh',
+    ];
 
     public function toggleStatus($id)
     {
@@ -21,12 +27,18 @@ class OrganizationTable extends Component
         session()->flash('message', 'Organization Status Updated Successfully.');
     }
 
+    public function edit($id)
+    {
+        $this->dispatch('openOrganizationCrud', $id);
+    }
+
+
     public function render()
     {
         $organizations = Organization::query()
             ->when($this->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%");
             })
             ->paginate(10);
 

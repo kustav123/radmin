@@ -4,6 +4,7 @@
         ['label' => 'Organization']
     ]">
     <x-slot name="header">
+        <x-ui.toast />
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
             <h2 class="text-3xl font-bold tracking-tight text-heading md:text-4xl">
                 {{ __('Organization') }}
@@ -18,7 +19,7 @@
                     </svg>
                     Tree View
                 </button>
-                <button onclick="Livewire.dispatch('openDepartmentCrud')"
+                <button onclick="Livewire.dispatch('openOrganizationCrud')"
                     class="px-6 py-2.5 rounded-full shadow-md text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:bg-gradient-to-l focus:ring-4 focus:outline-none focus:ring-purple-200 dark:focus:ring-purple-800 font-medium rounded-base text-sm text-center leading-5">
                     + Create New Organization
                 </button>
@@ -62,4 +63,49 @@
 
         </div>
     </div>
+
+    <script>
+        document.addEventListener('livewire:init', () => {
+
+            Livewire.on('toast', (payload) => {
+                const data = payload[0]; // 👈 IMPORTANT
+                showToast(data.type, data.message);
+            });
+
+        });
+
+        function showToast(type, message) {
+            const toast = document.getElementById('app-toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+
+            msg.innerText = message;
+
+            const styles = {
+                success: {
+                    icon: '✔',
+                    bg: 'bg-green-100 text-green-500'
+                },
+                error: {
+                    icon: '✖',
+                    bg: 'bg-red-100 text-red-500'
+                },
+                warning: {
+                    icon: '⚠',
+                    bg: 'bg-yellow-100 text-yellow-500'
+                }
+            };
+
+            icon.className = `inline-flex items-center justify-center w-8 h-8 rounded-lg ${styles[type].bg}`;
+            icon.innerText = styles[type].icon;
+
+            toast.classList.remove('hidden');
+
+            setTimeout(() => hideToast(), 3000);
+        }
+
+        function hideToast() {
+            document.getElementById('app-toast').classList.add('hidden');
+        }
+    </script>
 </x-layout>
