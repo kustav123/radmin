@@ -1,34 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "flowbite/plugin";
+@source "../../node_modules/flowbite";
 
-/* Ensure dark mode styles are applied */
-/* @layer base {
-    :root {
-        color-scheme: light;
-    }
-    
-    :root.dark {
-        color-scheme: dark;
-    }
-}
-
-@layer utilities {
-    .dark body {
-        @apply bg-gray-900 text-white;
-    }
-    
-    .dark button {
-        @apply dark:text-white;
-    }
-    
-    .dark div {
-        @apply dark:text-gray-100;
-    }
-} */
-
-
-[x-cloak] {
-    display: none;
-}
-
+@import "flowbite/src/themes/default";

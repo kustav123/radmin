@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Livewire\Organization;
+
+use Livewire\Component;
+use App\Models\Organization;
+
+
+class OrganizationStats extends Component
+{
+    protected $listeners = ['organizationSaved' => '$refresh'];
+
+    public function render()
+    {
+        return view('livewire.organization.organization-stats', [
+            'total' => Organization::count(),
+            'active' => Organization::where('status', 1)->count(),
+            'inactive' => Organization::where('status', 0)->count(),
+        ]);
+    }
+}
