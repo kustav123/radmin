@@ -8,7 +8,10 @@ use App\Models\Organization;
 
 class OrganizationStats extends Component
 {
-    protected $listeners = ['organizationSaved' => '$refresh'];
+    protected $listeners = [
+        'organizationSaved' => '$refresh',
+        'organizationStatusToggled' => '$refresh',
+        ];
 
     public function render()
     {

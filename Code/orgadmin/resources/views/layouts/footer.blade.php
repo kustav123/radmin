@@ -1,4 +1,4 @@
-<footer class="bg-neutral-primary-soft rounded-base shadow-xs sm:ml-64 border border-default">
+<footer class="row-start-3 row-span-1 bg-neutral-primary-soft rounded-base shadow-xs sm:ml-64 border border-default">
     <div class="w-full mx-auto max-w-screen-xl p-4 md:flex md:items-center md:justify-between">
       <span class="text-sm text-body sm:text-center">© 2023 <a href="https://flowbite.com/" class="hover:underline">Flowbite™</a>. All Rights Reserved.
     </span>

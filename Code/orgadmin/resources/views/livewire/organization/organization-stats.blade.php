@@ -1,9 +1,13 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
-    {{-- 🔹 Loading skeletons --}}
-    <div wire:loading.delay.longer class="contents">
+    {{-- 🔹 Loading skeletons - REMOVE contents class --}}
+    <div wire:loading.delay.longer>
         <x-skeleton.stat-card-skeleton />
+    </div>
+    <div wire:loading.delay.longer>
         <x-skeleton.stat-card-skeleton />
+    </div>
+    <div wire:loading.delay.longer>
         <x-skeleton.stat-card-skeleton />
     </div>
 
@@ -33,6 +37,5 @@
                 </svg>
             </x-slot:icon>
         </x-stat-card>
-
     </div>
 </div>

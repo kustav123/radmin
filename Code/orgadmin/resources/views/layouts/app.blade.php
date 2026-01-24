@@ -29,7 +29,7 @@
     @livewireStyles
 </head>
 
-<body class="bg-neutral-primary">
+<body class="bg-neutral-primary grid min-h-screen grid-rows-[auto_1fr_auto]">
     @yield('content')
     <x-banner />
 
@@ -40,7 +40,7 @@
     @include('layouts.sidebar')
 
     <!-- Main Content -->
-    <div class="p-4 sm:ml-64 mt-14">
+    <div class="p-4 sm:ml-64 mt-14 row-start-2 row-span-1">
         <div class="p-4 border-1 border-default border-dashed rounded-base">
             <!-- Page Content -->
             <main>
@@ -49,7 +49,9 @@
 
         </div>
     </div>
+    
     @include('layouts.footer')
+    
 
     @stack('modals')
 
