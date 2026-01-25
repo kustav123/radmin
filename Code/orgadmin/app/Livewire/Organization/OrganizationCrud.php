@@ -19,6 +19,7 @@ class OrganizationCrud extends Component
 
     protected $rules = [
         'name' => 'required|min:3|max:255',
+        'organizationId' => 'nullable', // or some validation for ID if manual
     ];
 
     public function open($id = null)
@@ -54,16 +55,19 @@ class OrganizationCrud extends Component
             $orgCode = strtolower(Str::random(6));
 
             // Ensure uniqueness just in case
-            while (Organization::where('org_code', $orgCode)->exists()) {
+            while (Organization::find($orgCode)) {
                 $orgCode = strtolower(Str::random(6));
             }
 
-            Organization::create([
+            $org = Organization::create([
                 'name' => $this->name,
-                'org_code' => $orgCode,
+                'id' => $orgCode,
                 'status' => true,
                 'created_by' => Auth::id(),
             ]);
+
+            // TODO: Use config('tenancy.central_domains')[1] or similar for dynamic suffix
+            $org->createDomain($orgCode . '.localhost');
         }
 
         $this->close();

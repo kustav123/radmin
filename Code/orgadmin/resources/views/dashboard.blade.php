@@ -10,7 +10,16 @@
 
     <div class="">
         <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
-            <x-welcome />
+            @if (tenant('id'))
+                <div class="p-6 lg:p-8 bg-white border-b border-gray-200">
+                    <h1 class="mt-8 text-2xl font-medium text-gray-900">
+                        Welcome to {{ tenant('id') }} Dashboard
+                    </h1>
+                </div>
+                <livewire:tenant.dashboard-stats />
+            @else
+                <x-welcome />
+            @endif
         </div>
     </div>
 </x-layout>

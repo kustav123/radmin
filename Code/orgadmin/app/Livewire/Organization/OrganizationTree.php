@@ -23,7 +23,7 @@ class OrganizationTree extends Component
 
     public function loadTree()
     {
-        $this->tree = Organization::select('id', 'name', 'org_code', 'department', 'status')->orderBy('name')->get();
+        $this->tree = Organization::select('id', 'name', 'department', 'status')->orderBy('name')->get();
     }
 
     public function toggle($id)

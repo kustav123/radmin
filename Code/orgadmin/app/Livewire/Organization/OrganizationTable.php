@@ -11,7 +11,7 @@ class OrganizationTable extends Component
     use WithPagination;
 
     public $search = '';
-    public $isLoading = false; 
+    public $isLoading = false;
 
     protected $listeners = [
         'organizationSaved' => '$refresh',
@@ -20,14 +20,14 @@ class OrganizationTable extends Component
 
     public function updatedSearch()
     {
-        $this->isLoading = true;     
-        $this->resetPage();          
+        $this->isLoading = true;
+        $this->resetPage();
     }
 
 
     public function updatingPage()
     {
-        $this->isLoading = true;    
+        $this->isLoading = true;
     }
 
     public function toggleStatus($id)
@@ -37,7 +37,7 @@ class OrganizationTable extends Component
         $organization->status = !$organization->status;
         $organization->save();
         $this->dispatch('organizationStatusToggled');
-        $this->isLoading = false;    
+        $this->isLoading = false;
     }
 
     public function edit($id)
@@ -48,12 +48,12 @@ class OrganizationTable extends Component
     public function render()
     {
         $this->isLoading = false;
-        
+
         $organizations = Organization::query()
             ->when($this->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'ILIKE', "%{$search}%")
-                      ->orWhere('org_code', 'ILIKE', "%{$search}%");
+                        ->orWhere('id', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderBy('created_at', 'desc')
