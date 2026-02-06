@@ -35,7 +35,7 @@
             <tr wire:key="org-{{ $org->id }}" class="bg-neutral-primary-soft border-b border-default hover:bg-neutral-secondary-medium transition duration-150">
                 <td class="px-6 py-4 font-medium text-heading whitespace-nowrap">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-xs text-xs font-medium bg-blue-100 text-blue-800 border border-blue-400">
-                        {{ $org->org_code }}
+                        {{ $org->id }}
                     </span>
                 </td>
                 <th scope="row" class="px-6 py-4 font-medium text-heading whitespace-nowrap">
@@ -51,7 +51,7 @@
                 </td>
                 <td class="px-6 py-4">
                     <label class="relative inline-flex items-center cursor-pointer group">
-                        <input type="checkbox" wire:click="toggleStatus({{ $org->id }})" class="sr-only peer" {{ $org->status ? 'checked' : '' }}>
+                        <input type="checkbox" wire:click="toggleStatus('{{ $org->id }}')" class="sr-only peer" {{ $org->status ? 'checked' : '' }}>
                         <div class="w-11 h-6 bg-neutral-secondary-medium peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-soft rounded-full peer border border-default-medium peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-default-medium after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600">
                         </div>
                         <span class="ml-3 text-sm font-medium text-heading group-hover:text-fg-brand transition-colors">

@@ -11,8 +11,8 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Flowbite CDN (Modern Theme) -->
-        <link href="https://cdn.jsdelivr.net/npm/flowbite@2.0.0/dist/flowbite.min.css" rel="stylesheet" />
+
+        {{-- Flowbite CSS is now bundled via Vite --}}
 
         <!-- Dark Mode Initialization Script -->
         <script>
@@ -37,8 +37,7 @@
             {{ $slot }}
         </div>
 
-        <!-- Flowbite JS (Modern) -->
-        <script src="https://cdn.jsdelivr.net/npm/flowbite@2.0.0/dist/flowbite.min.js"></script>
+        {{-- Flowbite JS is now bundled via Vite --}}
 
         <!-- Dark Mode Toggle Script -->
         <script>

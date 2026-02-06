@@ -23,6 +23,15 @@ class InitializeTenancyForNonCentralDomains
         }
 
         // Otherwise, initialize tenancy by domain
-        return app(InitializeTenancyByDomain::class)->handle($request, $next);
+        try {
+            return app(InitializeTenancyByDomain::class)->handle($request, $next);
+        } catch (\Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException $e) {
+            // Handle the case where tenant domain doesn't exist
+            return response()->view('errors.404', [
+                'title' => '404 Not Found',
+                'code' => 404,
+                'message' => "Tenant not found. The domain '{$request->getHost()}' is not registered in our system."
+            ], 404);
+        }
     }
 }

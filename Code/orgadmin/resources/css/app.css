@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @plugin "flowbite/plugin";
 @source "../../node_modules/flowbite";
+@source "../../resources/views";
+@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views";
+@source "../../vendor/laravel/jetstream";
 
 @import "flowbite/src/themes/default";
+

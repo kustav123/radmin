@@ -11,12 +11,15 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('organizations', function (Blueprint $table) {
-            $table->string('id')->primary(); // Used as Tenant ID (org_code)
+            $table->string('id')->primary(); // org_code / tenant id
             $table->string('name');
+            $table->string('slug')->unique();
             $table->jsonb('department')->nullable();
+            $table->string('plan')->default('free');
+            $table->jsonb('features')->nullable();
             $table->boolean('status')->default(true);
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
-            $table->json('data')->nullable(); // For custom tenant attributes
+            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
+            $table->json('data')->nullable();
             $table->timestamps();
         });
     }

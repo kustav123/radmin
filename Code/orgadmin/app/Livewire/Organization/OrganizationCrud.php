@@ -12,6 +12,7 @@ class OrganizationCrud extends Component
     public $show = false;
     public $organizationId;
     public $name;
+    public $disabled = false;
 
     protected $listeners = [
         'openOrganizationCrud' => 'open',
@@ -47,27 +48,27 @@ class OrganizationCrud extends Component
         $this->validate();
 
         if ($this->organizationId) {
-            $organization = Organization::find($this->organizationId);
+            $organization = Organization::findOrFail($this->organizationId);
+
             $organization->update([
                 'name' => $this->name,
             ]);
         } else {
-            $orgCode = strtolower(Str::random(6));
 
-            // Ensure uniqueness just in case
-            while (Organization::find($orgCode)) {
-                $orgCode = strtolower(Str::random(6));
+            $tenantId = strtolower(Str::random(6));
+            while (Organization::find($tenantId)) {
+                $tenantId = strtolower(Str::random(6));
             }
 
             $org = Organization::create([
-                'name' => $this->name,
-                'id' => $orgCode,
+                'id' => $tenantId,          
+                'name' => $this->name,      
                 'status' => true,
                 'created_by' => Auth::id(),
             ]);
 
-            // TODO: Use config('tenancy.central_domains')[1] or similar for dynamic suffix
-            $org->createDomain($orgCode . '.localhost');
+            $domain = $org->slug . '.localhost';
+            $org->createDomain($domain);
         }
 
         $this->close();

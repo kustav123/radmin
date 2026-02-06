@@ -22,40 +22,24 @@
         }
     </script>
 
+    {{-- Custom CSS for Animations --}}
+    <style>
+        .animate-fadeIn { animation: fadeIn 0.8s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    <!-- Styles -->
-    @livewireStyles
+    
 </head>
 
 <body class="bg-neutral-primary grid min-h-screen grid-rows-[auto_1fr_auto]">
-    @yield('content')
-    <x-banner />
-
-    <!-- Navbar -->
-    @include('layouts.topbar')
-
-    <!-- Sidebar -->
-    @include('layouts.sidebar')
-
-    <!-- Main Content -->
-    <div class="p-4 sm:ml-64 mt-14 row-start-2 row-span-1">
-        <div class="p-4 border-1 border-default border-dashed rounded-base">
-            <!-- Page Content -->
-            <main>
-                {{ $slot }}
-            </main>
-
-        </div>
+   <div class="min-h-screen flex items-center justify-center px-6 py-12">
+        {{ $slot }}
     </div>
-    
-    @include('layouts.footer')
-    
-
-    @stack('modals')
-
-    @livewireScripts
 </body>
 
 </html>
