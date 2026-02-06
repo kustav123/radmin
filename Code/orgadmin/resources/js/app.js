@@ -39,3 +39,11 @@ if (themeToggleDarkIcon && themeToggleLightIcon && themeToggleBtn) {
         }
     });
 }
+
+window.addEventListener('loader-show', () => {
+    GlobalLoader.show();
+});
+
+window.addEventListener('loader-hide', () => {
+    GlobalLoader.hide();
+});

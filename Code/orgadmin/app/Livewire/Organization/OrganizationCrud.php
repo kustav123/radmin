@@ -45,6 +45,8 @@ class OrganizationCrud extends Component
 
     public function save()
     {
+        $this->dispatch('loader-show');
+        
         $this->validate();
 
         if ($this->organizationId) {
@@ -78,6 +80,7 @@ class OrganizationCrud extends Component
             'message' => 'Organization saved successfully',
         ]);
 
+        $this->dispatch('loader-hide');
         $this->dispatch('organizationSaved');
     }
 

@@ -66,4 +66,11 @@ class Organization extends BaseTenant implements TenantWithDatabase
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function modules()
+    {
+        return $this->belongsToMany(Module::class, 'organization_modules')
+                    ->withPivot(['is_enabled', 'is_installed', 'installed_at'])
+                    ->withTimestamps();
+    }
 }

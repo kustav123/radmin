@@ -42,7 +42,7 @@ class OrganizationTable extends Component
 
     public function edit($id)
     {
-        $this->dispatch('openOrganizationCrud', $id);
+        return redirect()->route('organization.edit', $id);
     }
 
     public function render()

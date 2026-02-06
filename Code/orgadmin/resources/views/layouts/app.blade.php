@@ -54,6 +54,8 @@
     
 
     @stack('modals')
+    
+    <x-global-loader />
 
     @livewireScripts
 </body>
