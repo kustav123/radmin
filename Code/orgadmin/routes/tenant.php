@@ -3,39 +3,59 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
+use App\Http\Controllers\Tenant\CompanyController;
+use App\Http\Middleware\InitializeTenancyForNonCentralDomains;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 
 /*
 |--------------------------------------------------------------------------
-| Tenant Routes
+| Tenant Auth Routes
 |--------------------------------------------------------------------------
-|
-| Here you can register the tenant routes for your application.
-| These routes are loaded by the TenantRouteServiceProvider.
-|
-| Feel free to customize them however you want. Good luck!
-|
 */
-
 Route::middleware([
     'web',
-    PreventAccessFromCentralDomains::class,
+    InitializeTenancyForNonCentralDomains::class,
 ])->group(function () {
-    Route::get('/', function () {
-        return redirect()->route('tenant.dashboard');
-    });
 
-    Route::middleware([
-        'auth:sanctum',
-        config('jetstream.auth_session'),
-        'verified',
-    ])->group(function () {
-        Route::get('/dashboard', function () {
-            return view('dashboard');
-        })->name('tenant.dashboard');
+    Route::get('/login', fn () => view('auth.login'))
+        ->name('tenant.login');
 
-        Route::get('/users', \App\Livewire\Tenant\UserCrud::class)->name('tenant.users');
-        Route::get('/roles', \App\Livewire\Tenant\RoleCrud::class)->name('tenant.roles');
-    });
+    Route::post('/login', [
+        \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::class,
+        'store'
+    ])->name('tenant.login.store');
+
+    Route::post('/logout', [
+        \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::class,
+        'destroy'
+    ])->name('tenant.logout');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Tenant Protected Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware([
+    'web',
+    InitializeTenancyForNonCentralDomains::class,
+    PreventAccessFromCentralDomains::class,
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+
+    Route::get('/', fn () => redirect()->route('tenant.dashboard'));
+
+    Route::get('/dashboard', fn () => view('dashboard'))
+        ->name('tenant.dashboard');
+
+    Route::get('/users', \App\Livewire\Tenant\UserCrud::class)
+        ->name('tenant.users');
+
+    Route::get('/roles', \App\Livewire\Tenant\RoleCrud::class)
+        ->name('tenant.roles');
+
+    Route::get('/settings', [CompanyController::class, 'settings'])
+        ->name('tenant.settings');
 });

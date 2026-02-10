@@ -12,7 +12,9 @@
             </div>
         @endsession
 
-        <form method="POST" action="{{ route('login') }}">
+        <form method="POST" action="{{ tenancy()->initialized
+            ? route('tenant.login.store')
+            : route('login.store') }}">
             @csrf
 
             <div>

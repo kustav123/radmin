@@ -28,7 +28,7 @@ class CreateTenantAdmin
         // Run this inside the tenant's context
         $tenant->run(function () use ($tenant) {
             User::firstOrCreate(
-                ['email' => 'admin@' . $tenant->id . '.com'],
+                ['email' => 'admin@' . $tenant->slug . '.com'],
                 [
                     'name' => 'Admin',
                     'password' => bcrypt('password'), // Default password

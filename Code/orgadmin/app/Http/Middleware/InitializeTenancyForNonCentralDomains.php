@@ -5,33 +5,26 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
+use Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException;
 use Symfony\Component\HttpFoundation\Response;
 
 class InitializeTenancyForNonCentralDomains
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        $centralDomains = config('tenancy.central_domains', []);
-        $currentDomain = $request->getHost();
+        $host = $request->getHost();
 
-        // If this is a central domain, skip tenancy initialization
-        if (in_array($currentDomain, $centralDomains)) {
+        // 1️⃣ Central domains → skip tenancy completely
+        if (in_array($host, config('tenancy.central_domains', []), true)) {
             return $next($request);
         }
 
-        // Otherwise, initialize tenancy by domain
+        // 2️⃣ Non-central domains → try to initialize tenancy
         try {
             return app(InitializeTenancyByDomain::class)->handle($request, $next);
-        } catch (\Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException $e) {
-            // Handle the case where tenant domain doesn't exist
-            return response()->view('errors.404', [
-                'title' => '404 Not Found',
-                'code' => 404,
-                'message' => "Tenant not found. The domain '{$request->getHost()}' is not registered in our system."
-            ], 404);
+        } catch (TenantCouldNotBeIdentifiedOnDomainException $e) {
+            // 3️⃣ Unknown tenant domain → hard 404 (NOT login redirect)
+            abort(404, "Tenant not found for domain {$host}");
         }
     }
 }

@@ -44,8 +44,7 @@
                 alt="{{ auth()->user()->name ?? 'User' }}">
             </button>
           </div>
-          <div
-            class="z-50 hidden bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg w-44"
+          <div class="z-50 hidden bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg w-44"
             id="dropdown-user">
             <div class="px-4 py-3 border-b border-default-medium" role="none">
               <p class="text-sm font-medium text-heading" role="none">
@@ -62,7 +61,7 @@
                   role="menuitem">Profile</a>
               </li>
               <li>
-                <a href="#"
+                <a href="{{ tenant() ? route('tenant.settings') : route('organization') }}"
                   class="inline-flex items-center w-full p-2 hover:bg-neutral-tertiary-medium hover:text-heading rounded"
                   role="menuitem">Settings</a>
               </li>
