@@ -10,6 +10,9 @@ cloudnative-pg:
     repository: ghcr.io/cloudnative-pg/cloudnative-pg
     tag: 1.28.1
   nodeSelector: {}
+  # Example:
+  # nodeSelector:
+  #   role: database
   containerSecurityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -21,9 +24,6 @@ cloudnative-pg:
     runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
-  # Example:
-  # nodeSelector:
-  #   role: database
 
 strimzi-kafka-operator:
   enabled: true
@@ -33,6 +33,9 @@ strimzi-kafka-operator:
     name: operator
     tag: 0.51.0
   nodeSelector: {}
+  # Example:
+  # nodeSelector:
+  #   role: kafka-operator
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -44,9 +47,7 @@ strimzi-kafka-operator:
     runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
-  # Example:
-  # nodeSelector:
-  #   role: kafka-operator
+
 
 # Readiness check job configuration
 waitJob:
