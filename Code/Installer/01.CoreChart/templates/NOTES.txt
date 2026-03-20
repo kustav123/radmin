@@ -1,0 +1,36 @@
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+🚀 Core Services Up! 🌟
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Congratulations! The Core Umbrella Chart has been successfully installed/upgraded.
+
+The following components and operators are now under management:
+
+{{- if (index .Values "cloudnative-pg").enabled }}
+🟢 [INSTALLED] CloudNativePG Operator
+   - Image: {{ (index .Values "cloudnative-pg").image.repository }}:{{ (index .Values "cloudnative-pg").image.tag | default .Chart.AppVersion }}
+   - CRDs check: Clusters and SQL Database resources.
+{{- end }}
+
+{{- if (index .Values "strimzi-kafka-operator").enabled }}
+🟢 [INSTALLED] Strimzi Kafka Operator
+   - Image: {{ (index .Values "strimzi-kafka-operator").image.registry }}/{{ (index .Values "strimzi-kafka-operator").image.repository }}/{{ (index .Values "strimzi-kafka-operator").image.name }}:{{ (index .Values "strimzi-kafka-operator").image.tag | default .Chart.AppVersion }}
+   - CRDs check: Kafka clusters, Bridge and Connect resources.
+{{- end }}
+
+-----------------------------------------------------------------------
+📋 Quick Links & Commands
+-----------------------------------------------------------------------
+
+1. Check installation status:
+   kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+2. View the wait-job logs (if it was executed):
+   kubectl logs job/{{ include "core-umbrella-chart.fullname" . }}-wait -n {{ .Release.Namespace }}
+
+3. Documentation:
+   Refer to the README.md in the chart root for configuration details.
+
+Enjoy your cloud-native core services! 🌩️✨
+------------------------------------------------------------------------------------------------------------------------------------------------

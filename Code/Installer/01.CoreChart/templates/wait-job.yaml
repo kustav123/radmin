@@ -1,0 +1,109 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait
+  labels:
+    {{- include "core-umbrella-chart.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait-crd
+  labels:
+    {{- include "core-umbrella-chart.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait-crd
+  labels:
+    {{- include "core-umbrella-chart.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait-crd
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "core-umbrella-chart.fullname" . }}-wait
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait
+  labels:
+    {{- include "core-umbrella-chart.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  ttlSecondsAfterFinished: 1800 # Automatically delete after 30 minutes (1800 seconds)
+  template:
+    metadata:
+      labels:
+        {{- include "core-umbrella-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "core-umbrella-chart.fullname" . }}-wait
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wait-crd
+          image: {{ .Values.waitJob.image.repository }}:{{ .Values.waitJob.image.tag | default "latest" }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1001
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "--------------------------------------------------------"
+              echo "Starting Core Services Readiness Check..."
+              echo "--------------------------------------------------------"
+              
+              {{- if (index .Values "cloudnative-pg").enabled }}
+              echo "Checking for CloudNativePG CRDs..."
+              until kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; do
+                echo "Waiting for clusters.postgresql.cnpg.io CRD to be available..."
+                sleep 5
+              done
+              echo "✓ CloudNativePG CRDs are ready."
+              {{- end }}
+              
+              {{- if (index .Values "strimzi-kafka-operator").enabled }}
+              echo "Checking for Strimzi Kafka CRDs..."
+              until kubectl get crd kafkas.kafka.strimzi.io >/dev/null 2>&1; do
+                echo "Waiting for kafkas.kafka.strimzi.io CRD to be available..."
+                sleep 5
+              done
+              echo "✓ Strimzi Kafka CRDs are ready."
+              {{- end }}
+              
+              echo "--------------------------------------------------------"
+              echo "✓ All core services and operators are verified and up!"
+              echo "--------------------------------------------------------"

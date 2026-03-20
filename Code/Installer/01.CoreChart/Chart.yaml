@@ -1,0 +1,16 @@
+apiVersion: v2
+name: core-umbrella-chart
+description: A Helm umbrella chart for All core service and operator
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: cloudnative-pg
+    version: 0.27.1
+    repository: https://cloudnative-pg.github.io/charts
+    condition: cloudnative-pg.enabled
+  - name: strimzi-kafka-operator
+    version: 0.51.0
+    repository: https://strimzi.io/charts/
+    condition: strimzi-kafka-operator.enabled

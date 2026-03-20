@@ -1,0 +1,55 @@
+# Subchart configurations
+# Configure installation, image, and node selector for each service
+
+cloudnative-pg:
+  enabled: true
+  # -- Specifies whether the CRDs should be created when installing the chart.
+  crds:
+    create: true
+  image:
+    repository: ghcr.io/cloudnative-pg/cloudnative-pg
+    tag: 1.28.1
+  nodeSelector: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  # Example:
+  # nodeSelector:
+  #   role: database
+
+strimzi-kafka-operator:
+  enabled: true
+  image:
+    registry: quay.io
+    repository: strimzi
+    name: operator
+    tag: 0.51.0
+  nodeSelector: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  # Example:
+  # nodeSelector:
+  #   role: kafka-operator
+
+# Readiness check job configuration
+waitJob:
+  image:
+    repository: bitnami/kubectl
+    tag: latest
