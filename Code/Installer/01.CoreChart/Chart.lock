@@ -5,5 +5,8 @@ dependencies:
 - name: strimzi-kafka-operator
   repository: https://strimzi.io/charts/
   version: 0.51.0
-digest: sha256:3c0ff3f4b7cd00387a3a11cae244f2e55a8c77f7c43d8f55d616f388d05cc9e8
-generated: "2026-03-21T02:05:34.297802296+05:30"
+- name: openebs
+  repository: https://openebs.github.io/charts
+  version: 3.10.0
+digest: sha256:2402930caf0124696b587bf47d2dc253d77cf676f1b28010dce203afc6c1e8b0
+generated: "2026-03-24T16:44:08.84736623+05:30"

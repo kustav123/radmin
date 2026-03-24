@@ -54,3 +54,11 @@ waitJob:
   image:
     repository: bitnami/kubectl
     tag: latest
+
+openebs:
+  enabled: true
+  localpv-provisioner:
+    enabled: true
+    # Hostpath settings matching our Talos setup
+    hostpath:
+      basePath: /var/local/openebs

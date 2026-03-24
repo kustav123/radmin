@@ -93,6 +93,9 @@ spec:
                 sleep 5
               done
               echo "✓ CloudNativePG CRDs are ready."
+              echo "Waiting for CloudNativePG Operator deployment to be available..."
+              kubectl wait deployment -n {{ .Release.Namespace }} -l app.kubernetes.io/name=cloudnative-pg --for=condition=Available --timeout=300s
+              echo "✓ CloudNativePG Operator is ready."
               {{- end }}
               
               {{- if (index .Values "strimzi-kafka-operator").enabled }}
@@ -102,6 +105,21 @@ spec:
                 sleep 5
               done
               echo "✓ Strimzi Kafka CRDs are ready."
+              echo "Waiting for Strimzi Kafka Operator deployment to be available..."
+              kubectl wait deployment -n {{ .Release.Namespace }} -l name=strimzi-cluster-operator --for=condition=Available --timeout=300s
+              echo "✓ Strimzi Kafka Operator is ready."
+              {{- end }}
+              
+              {{- if (index .Values "openebs").enabled }}
+              echo "Checking for OpenEBS CRDs..."
+              until kubectl get crd blockdevices.openebs.io >/dev/null 2>&1; do
+                echo "Waiting for blockdevices.openebs.io CRD to be available..."
+                sleep 5
+              done
+              echo "✓ OpenEBS CRDs are ready."
+              echo "Waiting for OpenEBS NDM Operator deployment to be available..."
+              kubectl wait deployment -n {{ .Release.Namespace }} -l app=openebs-ndm-operator --for=condition=Available --timeout=300s
+              echo "✓ OpenEBS NDM Operator is ready."
               {{- end }}
               
               echo "--------------------------------------------------------"

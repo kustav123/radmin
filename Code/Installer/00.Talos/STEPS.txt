@@ -1,0 +1,45 @@
+Step-by-Step Talos & Core Service Installation Guide
+======================================================
+
+1. Infrastructure Check
+-----------------------
+- Boots from Talos `metal.iso`.
+- Confirm node is reachable at 192.168.56.x (for our case, we'll aim for 192.168.56.105).
+
+2. Generate Configuration With Patch
+------------------------------------
+# Inside 00.Talos/
+$ talosctl gen config "radmin-cluster" https://192.168.56.105:6443 --config-patch @patch.yaml
+
+This produces `controlplane.yaml`, `worker.yaml`, and `talosconfig`.
+
+3. Apply Configuration to the Node
+----------------------------------
+$ talosctl apply-config --nodes 192.168.56.105 --file controlplane.yaml --insecure
+
+4. Update talosconfig for Local Control
+---------------------------------------
+$ talosctl config endpoint 192.168.56.105 --talosconfig talosconfig
+$ talosctl config node 192.168.56.105 --talosconfig talosconfig
+
+5. Bootstrap the Cluster
+------------------------
+$ talosctl bootstrap --nodes 192.168.56.105 --talosconfig talosconfig
+
+6. Configure kubectl access
+---------------------------
+$ mkdir -p ~/.kube
+$ talosctl kubeconfig ~/.kube/config --nodes 192.168.56.105 --talosconfig talosconfig
+
+7. Deploy Core Services (CloudNativePG, Strimzi, OpenEBS)
+--------------------------------------------------------
+$ cd ../01.CoreChart
+$ ./run.sh
+
+Note: You can follow the logs in `helm-debug-install.log` and dry-run output in `helm-dry-run.yaml`.
+
+---
+Reset Guide:
+If you need to start fresh (single-node):
+$ cd 00.Talos
+$ talosctl reset --nodes 192.168.56.105 --talosconfig talosconfig --reboot --graceful=false
