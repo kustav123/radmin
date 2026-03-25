@@ -41,6 +41,38 @@ subjects:
     name: {{ include "core-umbrella-chart.fullname" . }}-wait
     namespace: {{ .Release.Namespace }}
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait-deployment
+  labels:
+    {{- include "core-umbrella-chart.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait-deployment
+  labels:
+    {{- include "core-umbrella-chart.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "core-umbrella-chart.fullname" . }}-wait-deployment
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "core-umbrella-chart.fullname" . }}-wait
+    namespace: {{ .Release.Namespace }}
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -106,7 +138,7 @@ spec:
               done
               echo "✓ Strimzi Kafka CRDs are ready."
               echo "Waiting for Strimzi Kafka Operator deployment to be available..."
-              kubectl wait deployment -n {{ .Release.Namespace }} -l name=strimzi-cluster-operator --for=condition=Available --timeout=300s
+              kubectl wait deployment -n {{ .Release.Namespace }} -l app=strimzi --for=condition=Available --timeout=300s
               echo "✓ Strimzi Kafka Operator is ready."
               {{- end }}
               
@@ -118,7 +150,7 @@ spec:
               done
               echo "✓ OpenEBS CRDs are ready."
               echo "Waiting for OpenEBS NDM Operator deployment to be available..."
-              kubectl wait deployment -n {{ .Release.Namespace }} -l app=openebs-ndm-operator --for=condition=Available --timeout=300s
+              kubectl wait deployment -n {{ .Release.Namespace }} -l app=openebs,name=ndm-operator --for=condition=Available --timeout=300s
               echo "✓ OpenEBS NDM Operator is ready."
               {{- end }}
               

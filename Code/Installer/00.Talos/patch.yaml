@@ -1,24 +1,24 @@
 machine:
-    network:
-        interfaces:
-            - interface: eth1
-              addresses:
-                  - 192.168.56.105/24
-    kernel:
-        modules:
-            - name: nvme_tcp
-            - name: nvme_core
-            - name: nvme_fabrics
-    kubelet:
-        extraMounts:
-            - destination: /var/local/openebs
-              type: bind
-              source: /var/local/openebs
-              options:
-                  - bind
-                  - rshared
-                  - rw
-    sysctls:
-        vm.nr_hugepages: "1024"
+  network:
+    interfaces:
+      - interface: eth1
+        addresses:
+          - 192.168.56.105/24
+  kernel:
+    modules:
+      - name: nvme_tcp
+      - name: nvme_core
+      - name: nvme_fabrics
+  kubelet:
+    extraMounts:
+      - destination: /var/openebs
+        type: bind
+        source: /var/openebs
+        options:
+          - bind
+          - rshared
+          - rw
+  sysctls:
+    vm.nr_hugepages: "1024"
 cluster:
-    allowSchedulingOnControlPlanes: true
+  allowSchedulingOnControlPlanes: true

@@ -19,6 +19,12 @@ The following components and operators are now under management:
    - CRDs check: Kafka clusters, Bridge and Connect resources.
 {{- end }}
 
+{{- if (index .Values "openebs").enabled }}
+🟢 [INSTALLED] OpenEBS LocalPV Provisioner
+   - Component: NDM and LocalPV operators
+   - CRDs check: BlockDevices and StoragePolicies.
+{{- end }}
+
 -----------------------------------------------------------------------
 📋 Quick Links & Commands
 -----------------------------------------------------------------------

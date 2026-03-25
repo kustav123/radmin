@@ -13,6 +13,14 @@ echo "Running Helm Dry Run (Debug Mode)..."
 helm install core-services . --namespace core-services --create-namespace --dry-run --debug > ../helm-dry-run.yaml 2>&1
 
 echo "Running Helm Upgrade/Install (Debug Mode)..."
-helm upgrade --install core-services . --namespace core-services --create-namespace --debug > ../helm-debug-install.log 2>&1
-
-echo "Deployment completed. Outputs stored in ../helm-dry-run.yaml and ../helm-debug-install.log"
+if helm upgrade --install core-services . --namespace core-services --create-namespace --debug > ../helm-debug-install.log 2>&1; then
+    echo "--------------------------------------------------------------------------------"
+    echo "📋 HELM POST-INSTALL NOTES"
+    echo "--------------------------------------------------------------------------------"
+    helm get notes core-services --namespace core-services
+    echo "--------------------------------------------------------------------------------"
+    echo "✓ Deployment completed successfully. Full logs stored in ../helm-debug-install.log"
+else
+    echo "❌ Deployment failed! Check ../helm-debug-install.log for details."
+    exit 1
+fi
