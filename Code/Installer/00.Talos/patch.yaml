@@ -3,13 +3,15 @@ machine:
     interfaces:
       - interface: eth1
         addresses:
-          - 192.168.56.105/24
+          - 192.168.56.104/24
   kernel:
     modules:
       - name: nvme_tcp
       - name: nvme_core
       - name: nvme_fabrics
   kubelet:
+    extraArgs:
+      node-ip: 192.168.56.104
     extraMounts:
       - destination: /var/openebs
         type: bind

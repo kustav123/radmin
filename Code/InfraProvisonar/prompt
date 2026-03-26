@@ -1,0 +1,28 @@
+I want to build a fastapi service which will have local sqlite db
+this service will act as an interface to provision service via CRD in k8s cluster using k8s sdk
+now it will have two type of api 1 . admin 2. db
+
+First I will tell about db api
+it will have endpoint like /db/provision
+which will accept peramiter like name, instance count , size, root password, app user, app password,
+db name, storage class name, resouce reqest and limit , 
+also add a peramiter like nodeport (bool)
+also a filed for tanentid 
+based on nodeport bool it will create nodeport service get rand from sqllite in db store a range by defult for 50  port also maintain the last used one , thorugh admin api i will controll
+based on the using cnpg crd it will provision the db and retrun the service name and port alomng with nodeport ,
+in case on nodeport get the nodeip set via admin api.
+as connaction string, 
+store the detail and status in db retun some id add one more api which can accept the db id and return status and other detail
+
+in admin db api it will have endpoint like
+ /admin/getnodeport
+ /admin/setnodeport
+ /admin/getnodeip
+ /admin/setnodeip
+
+
+ now ther will be no auth but later i will add it with keyclock and will asign sepert rlll ofr admin provisiondesgin now like this 
+ crete full code , one redme md mention api detail and how to run it , also mention the cnpg crd and how to install it , also mention the nodeport range and nodeip
+ i want swager enable
+ in env file add opction contoll if swager to on or not,
+ in env also add key like in_cluster , if false it will use kubernet context from .kube , also write a yaml to crte a service account , in env file add place to put the name of sa

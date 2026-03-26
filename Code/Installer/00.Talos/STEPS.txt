@@ -4,36 +4,36 @@ Step-by-Step Talos & Core Service Installation Guide
 1. Infrastructure Check
 -----------------------
 - Boots from Talos `metal.iso`.
-- Confirm node is reachable at 192.168.56.x (for our case, we'll aim for 192.168.56.107).
+- Confirm node is reachable at 192.168.56.x (for our case, we'll aim for 192.168.56.104).
 
 2. Generate Configuration With Patch
 ------------------------------------
 # Inside 00.Talos/
-$ talosctl gen config "radmin-cluster" https://192.168.56.107:6443 --config-patch @patch.yaml
+$ talosctl gen config "radmin-cluster" https://192.168.56.104:6443 --config-patch @patch.yaml
 
 This produces `controlplane.yaml`, `worker.yaml`, and `talosconfig`.
 
 3. Apply Configuration to the Node
 ----------------------------------
-$ talosctl apply-config --nodes 192.168.56.107 --file controlplane.yaml --insecure
+$ talosctl apply-config --nodes 192.168.56.104 --file controlplane.yaml --insecure
 
 4. Update talosconfig for Local Control
 ---------------------------------------
-$ talosctl config endpoint 192.168.56.107 --talosconfig talosconfig
-$ talosctl config node 192.168.56.107 --talosconfig talosconfig
+$ talosctl config endpoint 192.168.56.104 --talosconfig talosconfig
+$ talosctl config node 192.168.56.104 --talosconfig talosconfig
 
 5. Bootstrap the Cluster
 ------------------------
-$ talosctl bootstrap --nodes 192.168.56.107 --talosconfig talosconfig
+$ talosctl bootstrap --nodes 192.168.56.104 --talosconfig talosconfig
 
 6. Configure kubectl access
 ---------------------------
 $ mkdir -p ~/.kube
-$ talosctl kubeconfig ~/.kube/config --nodes 192.168.56.107 --talosconfig talosconfig
+$ talosctl kubeconfig C:\Users\kusta\.kube\config --nodes 192.168.56.104 --talosconfig talosconfig
 
 
 ---
 Reset Guide:
 If you need to start fresh (single-node):
 $ cd 00.Talos
-$ talosctl reset --nodes 192.168.56.107 --talosconfig talosconfig --reboot --graceful=false
+$ talosctl reset --nodes 192.168.56.104 --talosconfig talosconfig --reboot --graceful=false
