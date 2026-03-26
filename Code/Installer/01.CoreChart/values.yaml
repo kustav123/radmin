@@ -26,7 +26,7 @@ cloudnative-pg:
       type: RuntimeDefault
 
 strimzi-kafka-operator:
-  enabled: true
+  enabled: false
   image:
     registry: quay.io
     repository: strimzi
@@ -73,3 +73,53 @@ openebs:
   # Disable the Local Device provisioner
   localpv-device:
     enabled: false
+
+argo-cd:
+  enabled: true
+  # Deploying to 'argocd' namespace as requested
+  namespaceOverride: "argocd"
+  server:
+    service:
+      type: NodePort
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  controller:
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  repoServer:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  redis:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 32Mi
+  dex:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  configs:
+    params:
+      server.insecure: true

@@ -1,19 +1,31 @@
-#!/bin/zsh
+#!/bin/bash
 
 # Core Chart Deployment Script
-# This script runs a dry-run and then performs a debug install of the core umbrella chart.
 
 CHART_DIR=$(dirname "$0")
 cd "$CHART_DIR"
 
-echo "Updating Helm dependencies..."
+echo "[1/4] Ensuring Namespaces Exist..."
+kubectl create namespace core-services --dry-run=client -o yaml | kubectl apply -f -
+kubectl label namespace core-services pod-security.kubernetes.io/enforce=privileged --overwrite
+
+# Conditional Argo CD Namespace creation
+if grep -q "argo-cd:" values.yaml && grep -A 10 "argo-cd:" values.yaml | grep -q "enabled: true"; then
+    echo "[INFO] Argo CD enabled, ensuring 'argocd' namespace exists..."
+    kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+    kubectl label namespace argocd pod-security.kubernetes.io/enforce=baseline --overwrite
+else
+    echo "[INFO] Argo CD not detected or disabled, skipping namespace creation..."
+fi
+
+echo "[2/4] Updating Helm dependencies..."
 helm dependency update
 
-echo "Running Helm Dry Run (Debug Mode)..."
-helm install core-services . --namespace core-services --create-namespace --dry-run --debug > ../helm-dry-run.yaml 2>&1
+echo "[3/4] Running Helm Dry Run (Debug Mode)..."
+helm install core-services . --namespace core-services --dry-run --debug > ../helm-dry-run.yaml 2>&1
 
-echo "Running Helm Upgrade/Install (Debug Mode)..."
-if helm upgrade --install core-services . --namespace core-services --create-namespace --debug > ../helm-debug-install.log 2>&1; then
+echo "[4/4] Running Helm Upgrade/Install (Debug Mode)..."
+if helm upgrade --install core-services . --namespace core-services --debug > ../helm-debug-install.log 2>&1; then
     echo "--------------------------------------------------------------------------------"
     echo "📋 HELM POST-INSTALL NOTES"
     echo "--------------------------------------------------------------------------------"

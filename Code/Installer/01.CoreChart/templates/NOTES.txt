@@ -32,10 +32,20 @@ The following components and operators are now under management:
 1. Check installation status:
    kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
 
-2. View the wait-job logs (if it was executed):
+2. Access Argo CD:
+   {{- if (index .Values "argo-cd").enabled }}
+   Get the Argo CD NodePort:
+   export ARGO_PORT=$(kubectl get --namespace {{ (index .Values "argo-cd").namespaceOverride | default "argocd" }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "core-umbrella-chart.fullname" . }}-argo-cd-server)
+   echo http://$NODE_IP:$ARGO_PORT
+
+   Get the initial admin password:
+   kubectl -n {{ (index .Values "argo-cd").namespaceOverride | default "argocd" }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+   {{- end }}
+
+3. View the wait-job logs (if it was executed):
    kubectl logs job/{{ include "core-umbrella-chart.fullname" . }}-wait -n {{ .Release.Namespace }}
 
-3. Documentation:
+4. Documentation:
    Refer to the README.md in the chart root for configuration details.
 
 Enjoy your cloud-native core services! 🌩️✨

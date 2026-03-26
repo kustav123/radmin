@@ -42,7 +42,7 @@ subjects:
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: {{ include "core-umbrella-chart.fullname" . }}-wait-deployment
   labels:
@@ -56,7 +56,7 @@ rules:
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: {{ include "core-umbrella-chart.fullname" . }}-wait-deployment
   labels:
@@ -66,7 +66,7 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: {{ include "core-umbrella-chart.fullname" . }}-wait-deployment
 subjects:
   - kind: ServiceAccount
@@ -143,23 +143,21 @@ spec:
               {{- end }}
               
               {{- if .Values.openebs.enabled }}
-              {{- if .Values.openebs.ndm.enabled }}
-              echo "Checking for OpenEBS NDM CRDs..."
-              until kubectl get crd blockdevices.openebs.io >/dev/null 2>&1; do
-                echo "Waiting for blockdevices.openebs.io CRD to be available..."
-                sleep 5
-              done
-              echo "✓ OpenEBS NDM CRDs are ready."
-              echo "Waiting for OpenEBS NDM Operator deployment to be available..."
-              kubectl wait deployment -n {{ .Release.Namespace }} -l app=openebs,name=ndm-operator --for=condition=Available --timeout=300s
-              echo "✓ OpenEBS NDM Operator is ready."
-              {{- end }}
+              
               
               {{- if (index .Values.openebs "localpv-provisioner").enabled }}
               echo "Waiting for OpenEBS LocalPV Provisioner to be available..."
               kubectl wait deployment -n {{ .Release.Namespace }} -l app=localpv-provisioner,component=localpv-provisioner --for=condition=Available --timeout=300s
               echo "✓ OpenEBS LocalPV Provisioner is ready."
               {{- end }}
+              {{- end }}
+              
+              
+              {{- if (index .Values "argo-cd").enabled }}
+              {{- $argoNs := (index .Values "argo-cd").namespaceOverride | default "argocd" }}
+              echo "Waiting for Argo CD Server deployment to be available in namespace {{ $argoNs }}..."
+              kubectl wait deployment -n {{ $argoNs }} -l app.kubernetes.io/name=argocd-server --for=condition=Available --timeout=600s
+              echo "✓ Argo CD Server is ready."
               {{- end }}
               
               echo "--------------------------------------------------------"
