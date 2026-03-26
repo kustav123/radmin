@@ -14,10 +14,10 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo Running Helm Dry Run (Debug Mode)...
-helm install core-services . --namespace core-services --dry-run --debug > ..\helm-dry-run.yaml 2>&1
+helm install core-services . --namespace core-services --create-namespace --dry-run --debug > ..\helm-dry-run.yaml 2>&1
 
 echo Running Helm Upgrade/Install (Debug Mode)...
-helm upgrade --install core-services . --namespace core-services --debug > ..\helm-debug-install.log 2>&1
+helm upgrade --install core-services . --namespace core-services --create-namespace --debug > ..\helm-debug-install.log 2>&1
 if %ERRORLEVEL% equ 0 (
     echo --------------------------------------------------------------------------------
     echo 📋 HELM POST-INSTALL NOTES

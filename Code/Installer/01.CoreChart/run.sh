@@ -10,10 +10,10 @@ echo "Updating Helm dependencies..."
 helm dependency update
 
 echo "Running Helm Dry Run (Debug Mode)..."
-helm install core-services . --namespace core-services --dry-run --debug > ../helm-dry-run.yaml 2>&1
+helm install core-services . --namespace core-services --create-namespace --dry-run --debug > ../helm-dry-run.yaml 2>&1
 
 echo "Running Helm Upgrade/Install (Debug Mode)..."
-if helm upgrade --install core-services . --namespace core-services  --debug > ../helm-debug-install.log 2>&1; then
+if helm upgrade --install core-services . --namespace core-services --create-namespace --debug > ../helm-debug-install.log 2>&1; then
     echo "--------------------------------------------------------------------------------"
     echo "📋 HELM POST-INSTALL NOTES"
     echo "--------------------------------------------------------------------------------"

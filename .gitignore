@@ -1,0 +1,9 @@
+# Installer logs and dry runs
+Code/Installer/helm-debug-install.log
+Code/Installer/helm-dry-run.yaml
+
+# Talos cluster configurations and secrets
+Code/Installer/00.Talos/controlplane.yaml
+Code/Installer/00.Talos/talosconfig
+Code/Installer/00.Talos/worker.yaml
+Code/Installer/00.Talos/talosconfig
