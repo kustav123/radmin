@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "infra-provisioner.fullname" . }}-config
+  labels:
+    {{- include "infra-provisioner.labels" . | nindent 4 }}
+data:
+  IN_CLUSTER: {{ .Values.config.in_cluster | quote }}
+  SERVICE_ACCOUNT_NAME: {{ .Values.config.service_account_name | quote }}
+  SHOW_SWAGGER: {{ .Values.config.show_swagger | quote }}
+  NODE_IP: {{ .Values.config.node_ip | quote }}
+  NODEPORT_START: {{ .Values.config.nodeport_start | quote }}
+  NODEPORT_RANGE: {{ .Values.config.nodeport_range | quote }}
+  DEFAULT_NAMESPACE: {{ .Values.config.default_namespace | quote }}
+  DATABASE_URL: "sqlite:////db/infra_provisioner.db"

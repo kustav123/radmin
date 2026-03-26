@@ -1,0 +1,50 @@
+# Default values for infra-provisioner.
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: infra-provisioner
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+  # If type is NodePort, set an explicit port or leave blank for auto-assignment
+  nodePort: 32000
+
+# Infra Provisioner Logic Settings
+config:
+  node_ip: "192.168.56.104"
+  nodeport_start: 30100
+  nodeport_range: 50
+  default_namespace: "app"
+  show_swagger: "true"
+  service_account_name: "infra-provisioner-sa"
+  in_cluster: "true"
+
+# Storage Settings for Database Persistence
+persistence:
+  enabled: true
+  size: 10Mi
+  accessMode: ReadWriteOnce
+  storageClassName: "openebs-hostpath"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -61,34 +61,15 @@ openebs:
     enabled: true
     # Hostpath settings matching our Talos setup
     hostpath:
-      basePath: /var/local/openebs
+      basePath: /var/openebs
 
-  # Enabling NDM for Raw Disk /dev/sdb discovery
+  # Disabling NDM - no longer using raw block devices
   ndm:
-    enabled: true
-    sparse:
-      enabled: false # Disable sparse files, use real disks
+    enabled: false
   
   ndmOperator:
-    enabled: true
+    enabled: false
 
-  # Enable the Local Device provisioner to use the discovered block devices
+  # Disable the Local Device provisioner
   localpv-device:
-    enabled: true
-
-  # Security Context and Mounts for Talos (NDM Workers)
-  # Allowing NDM to scan host devices /dev, /sys and /run/udev
-  ndm-config:
-    filter-configs:
-    - key: os-disk-exclude-filter
-      name: os-disk-exclude-filter
-      state: true
-      value: "loop,fd0,sr0,ram,dm-,md"
-    - key: vendor-filter
-      name: vendor-filter
-      state: true
-      value: "Google,Amazon,Azure"
-    - key: path-filter
-      name: path-filter
-      state: true
-      value: "/dev/sda" # Exclude the OS disk
+    enabled: false

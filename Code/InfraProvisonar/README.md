@@ -58,8 +58,18 @@ The API will be available at [http://localhost:8000](http://localhost:8000).
 ### Admin Configuration
 - **GET `/admin/getnodeip`**: Retrieve current configured Node IP.
 - **POST `/admin/setnodeip`**: Update Node IP for connection strings.
+  ```bash
+  curl -X 'POST' 'http://localhost:8000/admin/setnodeip' \
+       -H 'Content-Type: application/json' \
+       -d '{"node_ip": "192.168.56.104"}'
+  ```
 - **GET `/admin/getnodeport`**: Show current NodePort range and last used port.
 - **POST `/admin/setnodeport`**: Update the available NodePort range (e.g., 30000 - 30050).
+  ```bash
+  curl -X 'POST' 'http://localhost:8000/admin/setnodeport' \
+       -H 'Content-Type: application/json' \
+       -d '{"nodeport_start": 30100, "nodeport_range": 50}'
+  ```
 
 ## NodePort Management
 When `nodeport=true` is sent in the provision request:
